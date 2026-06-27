@@ -1,0 +1,140 @@
+/* EL VYNCE — Achromatic Luxury design system
+   Strict monochrome: #000000 / #FFFFFF / #666666 / #E5E5E5 hairlines
+   Bodoni Moda (serif, brand/headings) + Inter (sans, body/UI)
+   Sharp 0px corners everywhere except circular dots/icons. */
+
+:root {
+  --black: #000000;
+  --white: #ffffff;
+  --gray: #666666;
+  --hairline: #e5e5e5;
+  --surface: #f9f9f9;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background-color: var(--white);
+  color: var(--black);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+.font-serif, .brand-wordmark, .headline {
+  font-family: 'Bodoni Moda', serif;
+}
+
+/* Glassmorphism per DESIGN.md: rgba(255,255,255,0.4) + blur(10px) + 1px #E5E5E5 border */
+.glass {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--hairline);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Sharp edges everywhere */
+button, input, textarea, select, .card, .glass, .glass-strong {
+  border-radius: 0;
+}
+
+.dot, .icon-circle {
+  border-radius: 9999px;
+}
+
+/* No-scrollbar helper */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Underline-style inputs */
+.input-underline {
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  background: transparent;
+  transition: border-color 0.3s ease;
+}
+.input-underline:focus {
+  border-bottom: 1px solid var(--black);
+  outline: none;
+}
+.input-underline.error {
+  border-bottom: 1px solid #ba1a1a;
+}
+
+.label-sm {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Product card hover */
+.product-card .product-image {
+  transition: transform 0.7s ease-out;
+}
+.product-card:hover .product-image {
+  transform: scale(1.03);
+}
+
+/* Accordion */
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-out, opacity 0.3s ease;
+  opacity: 0;
+}
+.accordion-active .accordion-content {
+  max-height: 240px;
+  opacity: 1;
+  padding-bottom: 1rem;
+}
+.accordion-icon { transition: transform 0.3s ease; }
+.accordion-active .accordion-icon { transform: rotate(45deg); }
+
+/* Cart drawer */
+#cart-overlay {
+  transition: opacity 0.4s ease;
+}
+#cart-drawer {
+  transition: transform 0.4s ease;
+}
+
+/* Hero wordmark overlap */
+.hero-wordmark {
+  font-family: 'Bodoni Moda', serif;
+  letter-spacing: -0.02em;
+  line-height: 0.9;
+  mix-blend-mode: difference;
+  color: var(--white);
+  pointer-events: none;
+}
+
+canvas#hero-shader, canvas#pdp-three {
+  pointer-events: none;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease both;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

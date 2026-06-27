@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Shop — EL VYNCE</title>
+<meta name="description" content="Shop EL VYNCE made-to-order Indian clothing by Drop."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#000000", "on-primary": "#ffffff", secondary: "#666666", "on-surface-variant": "#666666", "surface-container": "#f3f3f3", "outline-variant": "#e5e5e5" },
+        spacing: { unit: "8px", gutter: "24px", "section-gap": "120px", "container-max": "1440px", "margin-desktop": "64px", "margin-mobile": "20px" },
+        fontFamily: { "headline-lg": ["Bodoni Moda"], "label-sm": ["Inter"], "headline-md": ["Bodoni Moda"], "body-lg": ["Inter"], "body-md": ["Inter"] },
+        fontSize: {
+          "headline-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "headline-lg-mobile": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "headline-md": ["32px", { lineHeight: "40px", fontWeight: "400" }],
+          "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.1em", fontWeight: "500" }],
+          "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "0.01em", fontWeight: "400" }],
+          "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }]
+        }
+      }
+    }
+  };
+</script>
+<style>.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }</style>
+</head>
+<body class="bg-white text-primary font-body-md overflow-x-hidden">
+
+<!-- ===== Shared Nav ===== -->
+<nav class="fixed top-0 w-full z-50 glass border-b border-outline-variant/30" data-main-nav>
+  <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
+    <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter">EL VYNCE</a>
+    <div class="hidden md:flex gap-10">
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="index.html">Home</a>
+      <a class="label-sm text-primary border-b border-primary pb-1" href="product-listing.html">Shop</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="about.html">About</a>
+    </div>
+    <div class="flex items-center gap-6">
+      <button class="relative" onclick="evToggleCart()" aria-label="Open cart">
+        <span class="material-symbols-outlined text-primary">shopping_bag</span>
+        <span data-cart-count class="dot absolute -top-2 -right-2 bg-primary text-on-primary text-[10px] w-4 h-4 flex items-center justify-center" style="display:none;">0</span>
+      </button>
+      <button id="mobile-menu-btn" class="md:hidden material-symbols-outlined text-primary">menu</button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden glass border-t border-outline-variant/30 px-margin-mobile py-4 flex flex-col gap-4">
+    <a class="label-sm text-on-surface-variant" href="index.html">Home</a>
+    <a class="label-sm text-primary" href="product-listing.html">Shop</a>
+    <a class="label-sm text-on-surface-variant" href="about.html">About</a>
+  </div>
+</nav>
+
+<main class="pt-32 pb-section-gap">
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-center md:text-left">
+    <h1 id="drop-title" class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-2 tracking-tight">All Drops</h1>
+    <p class="label-sm text-secondary mb-12">Made to order. Production begins after you place your order.</p>
+    <div class="w-full h-px bg-outline-variant opacity-70 mb-16"></div>
+  </section>
+
+  <!-- Drop Tabs + Sort -->
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto mb-16">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+      <div id="drop-tabs" class="flex gap-3 overflow-x-auto pb-4 md:pb-0 no-scrollbar w-full md:w-auto"></div>
+      <div class="relative w-full md:w-auto">
+        <select id="sort-select" class="glass px-8 py-3 label-sm uppercase w-full md:w-48 appearance-none cursor-pointer">
+          <option value="default">Sort by: Featured</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="name-asc">Name: A–Z</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product Grid -->
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
+  </section>
+
+  <!-- Pagination (static, since catalogue fits one page) -->
+  <section class="mt-section-gap px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto flex justify-center">
+    <div class="flex gap-4">
+      <button class="dot w-12 h-12 glass flex items-center justify-center label-sm border border-primary">1</button>
+    </div>
+  </section>
+</main>
+
+<!-- ===== Cart Drawer (global) ===== -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">
+  <div class="absolute inset-0" onclick="evToggleCart()"></div>
+  <aside class="absolute top-0 right-0 h-full w-full max-w-md glass-strong border-l border-outline-variant/30 flex flex-col translate-x-full" id="cart-drawer">
+    <div class="flex items-center justify-between px-8 h-20 border-b border-outline-variant/20">
+      <h2 class="font-headline-md text-headline-md">Your Cart</h2>
+      <button class="material-symbols-outlined text-primary" onclick="evToggleCart()">close</button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-8 py-8 no-scrollbar">
+      <p id="cart-empty-state" class="label-sm text-secondary py-12 text-center hidden">Your cart is empty.</p>
+      <div class="space-y-10" id="cart-items-list"></div>
+    </div>
+    <footer class="border-t border-outline-variant/20 p-8 space-y-6">
+      <div class="flex justify-between items-center">
+        <span class="label-sm text-secondary">Subtotal</span>
+        <span class="font-body-lg text-body-lg font-bold" id="cart-subtotal">₹0</span>
+      </div>
+      <p class="label-sm text-secondary/70 text-center">Shipping, taxes, and discounts calculated at checkout.</p>
+      <button class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
+    </footer>
+  </aside>
+</div>
+
+<!-- ===== Shared Footer ===== -->
+<footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
+  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
+    <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
+    <div class="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-16">
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="shipping-returns.html">Shipping &amp; Returns</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="privacy-policy.html">Privacy Policy</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="terms-of-service.html">Terms of Service</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="contact.html">Contact</a>
+    </div>
+    <p class="label-sm text-[10px] text-secondary">© 2026 EL VYNCE. Made in Chennai, India.</p>
+  </div>
+</footer>
+
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script>
+  let evCurrentDrop = "All";
+  let evCurrentSort = "default";
+
+  function evGetDrops() {
+    return ["All", ...new Set(EL_VYNCE_PRODUCTS.map((p) => p.drop))];
+  }
+
+  function evRenderTabs() {
+    const tabs = document.getElementById("drop-tabs");
+    const drops = evGetDrops();
+    tabs.innerHTML = drops.map((d) => `
+      <button data-drop="${d}" class="px-8 py-3 dot whitespace-nowrap label-sm transition-all ${d === evCurrentDrop ? "bg-primary text-on-primary" : "glass text-on-surface-variant hover:bg-surface-container"}" onclick="evSelectDrop('${d}')">${d === "All" ? "All Drops" : d}</button>
+    `).join("");
+  }
+
+  function evSelectDrop(drop) {
+    evCurrentDrop = drop;
+    document.getElementById("drop-title").textContent = drop === "All" ? "All Drops" : drop.toUpperCase();
+    evRenderTabs();
+    evRenderGrid();
+  }
+
+  function evRenderGrid() {
+    const grid = document.getElementById("product-grid");
+    let list = EL_VYNCE_PRODUCTS.filter((p) => evCurrentDrop === "All" || p.drop === evCurrentDrop);
+
+    if (evCurrentSort === "price-asc") list = list.slice().sort((a, b) => a.price - b.price);
+    if (evCurrentSort === "price-desc") list = list.slice().sort((a, b) => b.price - a.price);
+    if (evCurrentSort === "name-asc") list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+    grid.innerHTML = list.map((p) => `
+      <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}">
+        <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
+          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
+          ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
+          ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
+          <img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>
+        </div>
+        <div class="flex flex-col gap-1">
+          <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>
+          <p class="label-sm text-secondary">${evFormatPrice(p.price)}</p>
+        </div>
+      </a>
+    `).join("");
+  }
+
+  document.getElementById("sort-select").addEventListener("change", (e) => {
+    evCurrentSort = e.target.value;
+    evRenderGrid();
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    evRenderTabs();
+    evRenderGrid();
+  });
+</script>
+</body>
+</html>

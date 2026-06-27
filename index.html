@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EL VYNCE — Made-to-Order Indian Clothing</title>
+<meta name="description" content="EL VYNCE — luxury minimal made-to-order Indian clothing. Achromatic, architectural, made for stillness."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#000000", "on-primary": "#ffffff", secondary: "#666666", "on-surface-variant": "#666666", "surface-container": "#f3f3f3", "surface-container-low": "#f9f9f9", "outline-variant": "#e5e5e5" },
+        spacing: { unit: "8px", gutter: "24px", "section-gap": "120px", "container-max": "1440px", "margin-desktop": "64px", "margin-mobile": "20px" },
+        fontFamily: { "headline-lg": ["Bodoni Moda"], "label-sm": ["Inter"], "headline-md": ["Bodoni Moda"], "body-lg": ["Inter"], "body-md": ["Inter"], "display-lg": ["Bodoni Moda"] },
+        fontSize: {
+          "headline-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "headline-lg-mobile": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "headline-md": ["32px", { lineHeight: "40px", fontWeight: "400" }],
+          "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.1em", fontWeight: "500" }],
+          "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "0.01em", fontWeight: "400" }],
+          "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+          "display-lg": ["80px", { lineHeight: "90px", letterSpacing: "-0.02em", fontWeight: "400" }]
+        }
+      }
+    }
+  };
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+</style>
+</head>
+<body class="bg-white text-primary font-body-md overflow-x-hidden">
+
+<!-- ===== Shared Nav ===== -->
+<nav class="fixed top-0 w-full z-50 glass border-b border-outline-variant/30" data-main-nav>
+  <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
+    <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter">EL VYNCE</a>
+    <div class="hidden md:flex gap-10">
+      <a class="label-sm text-primary border-b border-primary pb-1" href="index.html">Home</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="product-listing.html">Shop</a>
+      <!-- TODO: build out full About / brand-history page once client content is provided -->
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="about.html">About</a>
+    </div>
+    <div class="flex items-center gap-6">
+      <button class="relative" onclick="evToggleCart()" aria-label="Open cart">
+        <span class="material-symbols-outlined text-primary">shopping_bag</span>
+        <span data-cart-count class="dot absolute -top-2 -right-2 bg-primary text-on-primary text-[10px] w-4 h-4 flex items-center justify-center" style="display:none;">0</span>
+      </button>
+      <button id="mobile-menu-btn" class="md:hidden material-symbols-outlined text-primary">menu</button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden glass border-t border-outline-variant/30 px-margin-mobile py-4 flex flex-col gap-4">
+    <a class="label-sm text-primary" href="index.html">Home</a>
+    <a class="label-sm text-on-surface-variant" href="product-listing.html">Shop</a>
+    <a class="label-sm text-on-surface-variant" href="about.html">About</a>
+  </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<header class="relative w-full h-screen min-h-[640px] overflow-hidden bg-black">
+  <img src="images/hero-editorial.png" alt="Editorial photography of models walking toward camera wearing EL VYNCE garments" class="absolute inset-0 w-full h-full object-cover opacity-90"/>
+  <!-- subtle low-opacity shader accent -->
+  <canvas id="hero-shader" class="absolute inset-0 w-full h-full"></canvas>
+  <div class="absolute inset-0 bg-black/10"></div>
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <h1 class="hero-wordmark text-center text-[18vw] md:text-[14vw] tracking-tight select-none">EL VYNCE</h1>
+  </div>
+  <div class="absolute bottom-0 left-0 w-full px-margin-mobile md:px-margin-desktop pb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6 max-w-container-max mx-auto">
+    <p class="font-body-lg text-body-lg text-white max-w-md">Made-to-order Indian clothing, cut for stillness. Every piece begins after you place your order.</p>
+    <a href="product-listing.html" class="bg-white text-black px-8 py-4 label-sm w-fit hover:opacity-90 transition-opacity">Shop the Collection</a>
+  </div>
+
+  <!-- Glassmorphic AI-styled search bar (visual only, no backend) -->
+  <div class="absolute top-24 left-1/2 -translate-x-1/2 w-[90%] md:w-[480px]">
+    <div class="glass-strong flex items-center gap-3 px-6 py-4">
+      <span class="material-symbols-outlined text-primary">auto_awesome</span>
+      <input type="text" placeholder="Ask EL VYNCE to find your next piece…" class="bg-transparent border-none outline-none flex-1 font-body-md text-primary placeholder:text-secondary" disabled />
+      <span class="material-symbols-outlined text-secondary">search</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===== Featured / New Collection ===== -->
+<main>
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pt-section-gap pb-section-gap">
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-16">
+      <div>
+        <p class="label-sm text-secondary mb-3">New Arrivals</p>
+        <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg tracking-tight">The Latest Drop</h2>
+      </div>
+      <a href="product-listing.html" class="label-sm underline underline-offset-4 hover:text-secondary transition-colors">View All Products</a>
+    </div>
+
+    <div id="featured-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
+  </section>
+</main>
+
+<!-- ===== Cart Drawer (global) ===== -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">
+  <div class="absolute inset-0" onclick="evToggleCart()"></div>
+  <aside class="absolute top-0 right-0 h-full w-full max-w-md glass-strong border-l border-outline-variant/30 flex flex-col translate-x-full" id="cart-drawer">
+    <div class="flex items-center justify-between px-8 h-20 border-b border-outline-variant/20">
+      <h2 class="font-headline-md text-headline-md">Your Cart</h2>
+      <button class="material-symbols-outlined text-primary" onclick="evToggleCart()">close</button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-8 py-8 no-scrollbar">
+      <p id="cart-empty-state" class="label-sm text-secondary py-12 text-center hidden">Your cart is empty.</p>
+      <div class="space-y-10" id="cart-items-list"></div>
+    </div>
+    <footer class="border-t border-outline-variant/20 p-8 space-y-6">
+      <div class="flex justify-between items-center">
+        <span class="label-sm text-secondary">Subtotal</span>
+        <span class="font-body-lg text-body-lg font-bold" id="cart-subtotal">₹0</span>
+      </div>
+      <p class="label-sm text-secondary/70 text-center">Shipping, taxes, and discounts calculated at checkout.</p>
+      <button class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
+    </footer>
+  </aside>
+</div>
+
+<!-- ===== Shared Footer ===== -->
+<footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
+  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
+    <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
+    <div class="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-16">
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="shipping-returns.html">Shipping &amp; Returns</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="privacy-policy.html">Privacy Policy</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="terms-of-service.html">Terms of Service</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="contact.html">Contact</a>
+    </div>
+    <p class="label-sm text-[10px] text-secondary">© 2026 EL VYNCE. A law unto silence. Made in Chennai, India.</p>
+  </div>
+</footer>
+
+<script src="js/products.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/main.js"></script>
+<script src="js/hero-shader.js"></script>
+<script>
+  function evRenderFeatured() {
+    const grid = document.getElementById("featured-grid");
+    if (!grid || !window.EL_VYNCE_PRODUCTS) return;
+    const featured = EL_VYNCE_PRODUCTS.slice(0, 4);
+    grid.innerHTML = featured.map((p) => `
+      <a href="product-detail.html?id=${p.id}" class="product-card group block">
+        <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
+          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
+          ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
+          <img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover"/>
+        </div>
+        <div class="flex flex-col gap-1">
+          <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>
+          <p class="label-sm text-secondary">${evFormatPrice(p.price)}</p>
+        </div>
+      </a>
+    `).join("");
+  }
+  document.addEventListener("DOMContentLoaded", evRenderFeatured);
+</script>
+</body>
+</html>
