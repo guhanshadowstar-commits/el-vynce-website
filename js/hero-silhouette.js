@@ -203,29 +203,42 @@ function initHeroSilhouette() {
   let taglineIndex = 0;
 
   function cycleTagline() {
-    taglineIndex = (taglineIndex + 1) % TAGLINES.length;
     const nextCanvas = activeIsA ? shirtCanvasB : shirtCanvasA;
     const nextTexture = activeIsA ? textureB : textureA;
     const nextMesh = activeIsA ? shirtMeshB : shirtMeshA;
     const prevMesh = activeIsA ? shirtMeshA : shirtMeshB;
 
-    paintTagline(nextCanvas, TAGLINES[taglineIndex]);
-    nextTexture.needsUpdate = true;
-    nextMesh.material.opacity = 0;
+    const fadeOutStart = performance.now();
+    const HALF = TAGLINE_FADE_MS / 2;
 
-    const start = performance.now();
-    function fade() {
-      const elapsed = performance.now() - start;
-      const progress = Math.min(elapsed / TAGLINE_FADE_MS, 1);
-      nextMesh.material.opacity = progress;
+    // Phase 1: fade the current text fully out (next mesh stays hidden the whole time).
+    function fadeOut() {
+      const elapsed = performance.now() - fadeOutStart;
+      const progress = Math.min(elapsed / HALF, 1);
       prevMesh.material.opacity = 1 - progress;
       if (progress < 1) {
-        requestAnimationFrame(fade);
+        requestAnimationFrame(fadeOut);
       } else {
-        activeIsA = !activeIsA;
+        // Phase 2: swap in the new tagline only once the old one is fully gone, then fade in.
+        taglineIndex = (taglineIndex + 1) % TAGLINES.length;
+        paintTagline(nextCanvas, TAGLINES[taglineIndex]);
+        nextTexture.needsUpdate = true;
+        nextMesh.material.opacity = 0;
+        const fadeInStart = performance.now();
+        function fadeIn() {
+          const elapsed2 = performance.now() - fadeInStart;
+          const progress2 = Math.min(elapsed2 / HALF, 1);
+          nextMesh.material.opacity = progress2;
+          if (progress2 < 1) {
+            requestAnimationFrame(fadeIn);
+          } else {
+            activeIsA = !activeIsA;
+          }
+        }
+        fadeIn();
       }
     }
-    fade();
+    fadeOut();
   }
   setInterval(cycleTagline, TAGLINE_HOLD_MS);
 
