@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Shipping &amp; Returns — EL VYNCE</title>
+<title>Search — EL VYNCE</title>
+<meta name="description" content="Search EL VYNCE made-to-order Indian clothing."/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -12,8 +13,8 @@
   tailwind.config = {
     theme: {
       extend: {
-        colors: { primary: "#000000", "on-primary": "#ffffff", secondary: "#666666", "on-surface-variant": "#666666", "outline-variant": "#e5e5e5" },
-        spacing: { "section-gap": "120px", "container-max": "1440px", "margin-desktop": "64px", "margin-mobile": "20px", gutter: "24px" },
+        colors: { primary: "#000000", "on-primary": "#ffffff", secondary: "#666666", "on-surface-variant": "#666666", "surface-container": "#f3f3f3", "outline-variant": "#e5e5e5" },
+        spacing: { unit: "8px", gutter: "24px", "section-gap": "120px", "container-max": "1440px", "margin-desktop": "64px", "margin-mobile": "20px" },
         fontFamily: { "headline-lg": ["Bodoni Moda"], "label-sm": ["Inter"], "headline-md": ["Bodoni Moda"], "body-lg": ["Inter"], "body-md": ["Inter"] },
         fontSize: {
           "headline-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.01em", fontWeight: "400" }],
@@ -31,6 +32,7 @@
 </head>
 <body class="bg-white text-primary font-body-md overflow-x-hidden">
 
+<!-- ===== Shared Nav ===== -->
 <nav class="fixed top-0 w-full z-50 glass border-b border-outline-variant/30" data-main-nav>
   <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
     <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter">EL VYNCE</a>
@@ -58,45 +60,24 @@
   </div>
 </nav>
 
-<main class="pt-32 pb-section-gap max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop">
-  <header class="mb-16">
-    <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-4">Shipping &amp; Returns</h1>
-    <p class="text-secondary">Last updated: 2026-06-27</p>
-  </header>
-
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Shipping</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>Every EL VYNCE piece is made to order. Production begins once your order has been placed, and orders are processed within <strong class="text-primary">3–5 business days</strong> after payment confirmation.</p>
-      <p>Estimated delivery is <strong class="text-primary">5–7 working days</strong> within India. Delivery timelines may vary depending on your location and the courier partner handling your shipment.</p>
-      <p>Once your order ships, you will receive tracking information via email.</p>
-      <p>If an order is undelivered due to an incorrect address or a failed delivery attempt, it will be returned to our facility. In this case, you may choose to have the order reshipped (additional shipping cost may apply) or cancelled — provided you let us know before the order is reprocessed.</p>
-    </div>
+<main class="pt-32 pb-section-gap">
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-center md:text-left">
+    <h1 id="search-title" class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-2 tracking-tight">Search</h1>
+    <p class="label-sm text-secondary mb-12" id="search-subtitle">Made to order. Production begins after you place your order.</p>
+    <div class="w-full h-px bg-outline-variant opacity-70 mb-16"></div>
   </section>
 
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Cancellations</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>Orders cannot be cancelled once they have entered printing or production. If you need to cancel, please email <a class="text-primary underline" href="mailto:elvynceofficial@gmail.com">elvynceofficial@gmail.com</a> immediately — cancellation is only possible before your order enters processing.</p>
+  <!-- Product Grid -->
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+    <div id="search-empty-state" class="hidden text-center py-24">
+      <p class="font-body-lg text-body-lg text-secondary mb-8" id="search-empty-text"></p>
+      <a href="product-listing.html" class="bg-primary text-on-primary px-8 py-4 label-sm inline-block">Browse Our Drops</a>
     </div>
-  </section>
-
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Returns, Exchanges &amp; Refunds</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>As each EL VYNCE piece is custom, printed-on-demand, and made to order, we do not offer returns, exchanges, or refunds once an order has been placed. This policy protects the quality, hygiene, and personalization integrity of every garment we produce.</p>
-    </div>
-  </section>
-
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Damaged or Misprinted Items</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>If your item arrives damaged or misprinted, please contact us within <strong class="text-primary">48 hours of delivery</strong> at <a class="text-primary underline" href="mailto:elvynceofficial@gmail.com">elvynceofficial@gmail.com</a> with photos of the issue and your order receipt.</p>
-      <p>Once verified, we will provide a free replacement. Please note: cash refunds are never issued under any circumstance.</p>
-    </div>
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
   </section>
 </main>
 
+<!-- ===== Cart Drawer (global) ===== -->
 <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">
   <div class="absolute inset-0" onclick="evToggleCart()"></div>
   <aside class="absolute top-0 right-0 h-full w-full max-w-md glass-strong border-l border-outline-variant/30 flex flex-col translate-x-full" id="cart-drawer">
@@ -119,6 +100,7 @@
   </aside>
 </div>
 
+<!-- ===== Shared Footer ===== -->
 <footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
   <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
     <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
@@ -135,5 +117,61 @@
 <script src="js/products.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/main.js"></script>
+<script>
+  function evGetSearchQuery() {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("q") || "").trim();
+  }
+
+  function evRenderSearchResults() {
+    const query = evGetSearchQuery();
+    const titleEl = document.getElementById("search-title");
+    const subtitleEl = document.getElementById("search-subtitle");
+    const gridEl = document.getElementById("product-grid");
+    const emptyStateEl = document.getElementById("search-empty-state");
+    const emptyTextEl = document.getElementById("search-empty-text");
+
+    if (!query) {
+      titleEl.textContent = "Search";
+      subtitleEl.textContent = "Enter a search term to find a piece.";
+      gridEl.innerHTML = "";
+      emptyStateEl.classList.add("hidden");
+      return;
+    }
+
+    titleEl.textContent = `Results for "${query}"`;
+    subtitleEl.textContent = "Made to order. Production begins after you place your order.";
+
+    const lowerQuery = query.toLowerCase();
+    const matches = (window.EL_VYNCE_PRODUCTS || []).filter((p) =>
+      p.name.toLowerCase().includes(lowerQuery)
+    );
+
+    if (matches.length === 0) {
+      gridEl.innerHTML = "";
+      emptyTextEl.textContent = `No pieces found for "${query}". Try browsing our Drops instead.`;
+      emptyStateEl.classList.remove("hidden");
+      return;
+    }
+
+    emptyStateEl.classList.add("hidden");
+    gridEl.innerHTML = matches.map((p) => `
+      <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}">
+        <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
+          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
+          ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
+          ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
+          ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
+        </div>
+        <div class="flex flex-col gap-1">
+          <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>
+          <p class="label-sm text-secondary">${evFormatPrice(p.price)}</p>
+        </div>
+      </a>
+    `).join("");
+  }
+
+  document.addEventListener("DOMContentLoaded", evRenderSearchResults);
+</script>
 </body>
 </html>

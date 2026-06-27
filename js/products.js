@@ -24,82 +24,108 @@ const EL_VYNCE_PRODUCTS = [
   },
   {
     id: "ev-002",
-    name: "Charcoal Silk Kurta",
+    name: "Rebel Soul",
     drop: "Drop 01",
-    price: 7400,
+    price: 7400, // PLACEHOLDER PRICE — pending client confirmation
     currency: "INR",
-    colors: ["#2b2b2b", "#000000"],
-    sizes: ["S", "M", "L", "XL"],
-    images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDHLfudFsG5vFzSElWlHyB_d-q7O7546rbsAPDDP0jGGcoz_iigCuk1Jx7bCbLxd1QkVTRgNZ_VmJQBDjeXV_3K90lsw4XUC8zp4cOBfZORxI5h4EgOuW3w4dz7WphlV6WD53avYdsFUwKgB3JRt7tbm8OxzzEt56m52IwgEoFwniHEm7RS0K2IEvi0WHqLCIXmKMRg4mYD3mX8of2bGGV8KEtL91nR_xFRb_QMeFhdp0cV1IDzNek-TqqqnGI7SiKBFIHLkW-DXXM",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuASN45sXIdpGYr-v1KwIYw3zPx3O_pN0mGkZzyxa1bFpkUPQ9HHQuClcv8_-G45uaX9oBCSYAyJK6hzFH-m5TdkzUd_Qd7pjP9tz5DGJv2YqaMdj6o01EU9i3gd1UYA4ncpr5L5FpkXi0fh_mvs0rYEJTNSM9rVUbOimUzlkLGIoD4pJaWGRAlib9kzhrvICCsnB5iZE3tXY-f3zK_KiOw9DRbgOUMy8MN4ONzx_ulPRt9uMEh47h936LYnaLdZRrE5KLa3ywPqSFU",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuA-HLKFFapCoK4zDwNDjWFvKzPNJdr9ypDqxOGeGLFYgKIwrdd2UIt0DNyZgSuRhB7Oh09EzcWT5HjghqrhlaiJ0ggr94l9PIUi63zXLrt5UFV96IU0aYfTtb4dHSeMXnjwHM4f0Gyn_LWYuBfo6IXq6ktZOwR0F5RRpZZFtijpY-WwQIxAe1nr4rMFdP59X6XKhj6Urymz68xJlxbXgUtlbGyZ4CXxApnjK3jfEJbsuljhF8v27LK4xs2rx7CET2OR231XoFgD_JQ"
-    ],
-    description: "Pure silk kurta with a fluid drape and concealed placket, made to order in our Chennai atelier. A quiet counterpoint to louder occasion-wear.",
+    colors: ["#b3001b"],
+    sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: [],
+    placeholderSwatch: {
+      bg: "#b3001b",
+      front: { text: "REBEL SOUL", style: "serif", color: "#ffffff" },
+      back: { text: "I stayed quiet, that was my loudest rebellion", style: "line-art", color: "#ffffff" }
+    },
+    description: "Red tee — front print \"REBEL SOUL\" in white serif text. Back print: abstract line-art of overlapping face/profile silhouettes with the line \"I stayed quiet, that was my loudest rebellion.\" Made to order in our Chennai atelier.",
     inStock: true,
-    isNew: false
+    isNew: true
   },
   {
     id: "ev-003",
-    name: "Columnar Trousers",
+    name: "Frequency",
     drop: "Drop 01",
-    price: 6200,
+    price: 6200, // PLACEHOLDER PRICE — pending client confirmation
     currency: "INR",
-    colors: ["#000000"],
-    sizes: ["28", "30", "32", "34", "36"],
-    images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuD4M7_f9ramaH-TFcgc9RhKafLLb98EJLwlwO-6XENjN193fSJ8RwL2M4h8Rm4OT_yepOpYmKizQn6rIVR_86ucjdij4x9LtcQscO1Wra2I1ocIAMh2zVPX2qqNAzuKf7d1NLgfTeQT0nI-67vs7YDxmDuYIq2rekZFauxey6sTyDIsYMin0kVDZkK5_4BGQuDM1je_j0lHlqghAc-Rj1hxpAXp8HO_CPrITAiJWDiVD9ug8KfvWzdLXkspg92ySYYC_6rNVVZiKxo",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBUWzFUA-rExrm68wb_ds_Jl2P5f7Kz4iZ8CQ19YmgPlvmHbUy2Won7LDlSfe-VF3D4UcaJYI9qJPmXPQb6lH178msdhkSlRgyZHX6ncmHj3gSu3i_y7qPWHdEP8FNlwgVo2ioEefTZlzkE1iQAwFxwY4564d_SSicrAEM9rHeJc_YMYYEKiRBZYpgBd5EUcDvwrltqKdorfSPOvT7f6z-0kYdPmBd0iDT0Vz6bZ89H9IxnEm8nev7SZZOgQKqPpAnz2YPhNejMWjE"
-    ],
-    description: "Tailored trousers in heavy wool-blend, finished with a precise taper. Currently sold out — restock notifications coming with Drop 02.",
-    inStock: false,
-    isNew: false
+    colors: ["#d8c3a5"],
+    sizes: ["28", "30", "32", "34", "36"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: [],
+    placeholderSwatch: {
+      bg: "#d8c3a5",
+      front: { text: "FREQUENCY", style: "thin-sans", color: "#000000" },
+      back: { text: "Everything is energy and a vibrational frequency that includes you", style: "sacred-geometry", color: "#000000" }
+    },
+    description: "Tan/beige tee — front print \"FREQUENCY\" in a thin elegant sans-serif wordmark. Back print: a vertical column of geometric/sacred-geometry symbols (triangle, bowtie, cone, sphere, rings, cube) with the line \"Everything is energy and a vibrational frequency that includes you.\"",
+    inStock: true,
+    isNew: true
   },
   {
     id: "ev-004",
-    name: "Monolith Knit Sweater",
-    drop: "Drop 02",
-    price: 9800,
+    name: "Style Pays Off",
+    drop: "Warrior Drop",
+    price: 9800, // PLACEHOLDER PRICE — pending client confirmation
     currency: "INR",
-    colors: ["#000000", "#4a4a4a"],
-    sizes: ["S", "M", "L", "XL"],
-    images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAwzXVuw-GZwZgzN00nxchcyeGywS8DEinQ8wSZroItpUyLrnCIDyOb5yRYpDYTkadgBArl2G7d0zXtOQpcs_CwaHhByDp7wpYIO-fIvXG1rsYRrdQ7Q6XtWjXojjMbJrc-mnpOTvJdgh066Neh3henkCtZ_EWL3j9p0BPOxNypbvabKlbYVL_iFPxQ1MwvZ__2qxeE-t67ENGVJrREcnNwkizIQvIINyvdS3rLcmZbRwk7XU3-1NBNDR72aCg3pp_3kYitdjyyCjg",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBfAkSNqhfIZnedaadALWZUOzP59G09XdPrMZjGsBu3fhTV1nhedmxZOZ8CwY4J-eFTA1PPVJHLO863GUKXjZQIM5RvWzH9HFXyaWk-o5yWRMGxVfMltD8tB2mRq3nFfAlsmobmLrbHyCPaNIJKVMJYsLlHJgXJ-3KXtLMj2lBDBDF269J1m1W8ocbV_WiLAlyOi0rFAjN5ykK0z3VgA0T0h3yykPlqWbk9eexbLN9bd7eiJkAuh3o0W11qjlfxeO4VXjDCzndeBto"
-    ],
-    description: "A structured collar knit in dense merino, designed for quiet weight and warmth. Part of our Drop 02 exploration of texture over print.",
+    colors: ["#f1ead9"],
+    sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: [],
+    placeholderSwatch: {
+      bg: "#f1ead9",
+      front: { text: "STYLE PAYS OFF", style: "barcode", color: "#000000" }
+    },
+    description: "Cream/off-white tee — front print: a barcode graphic with \"STYLE PAYS OFF\" set beneath it. Part of the Warrior Drop.",
     inStock: true,
     isNew: true
   },
   {
     id: "ev-005",
-    name: "Static Tailored Blazer",
-    drop: "Drop 02",
-    price: 14200,
+    name: "Just Be Resilient",
+    drop: "Warrior Drop",
+    price: 14200, // PLACEHOLDER PRICE — pending client confirmation
     currency: "INR",
-    colors: ["#1a1a1a", "#666666"],
-    sizes: ["S", "M", "L", "XL"],
-    images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBY88Mtd-JL2UJEzZ5Lo0kb0CitibzvsmF3h6CCz3p_SjZZjnU_h9a2T_LdvWxMV1laUkHl7P0mOfY9rFaRz2HCZ58DuczuTpcpZfowKu0ZBR5hd2EOyO48PKwJKCulNO5Q5NpktdF88d-IdD84K_W-Bojc-sYo5lsA0n_pSdKVgdPE6vCee3o1FjIqORMGemPNgSKuhKfpsY5Maqo-5wFHunoi1-9Zk02xpk7KvhGCXhblsvKjk84HcHDpuWfipEyM9EfD4h10-QY",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDIQPHqFHmhFgtacgqmt1Kt8eP7E2MEAQ1dOixJAkvdy-xsDY9k4_N3WIGn1Htgvna-QwBtEGMGbDSpti2mW1i-LJwROd8a_wtwdngGDJVnYH9pL7rGsZu55BwAuKz-1rg8zXC87iWGEpKMGQAukJua1zm__bGaETu-gagkS_Ltfd73XZWYls6HYFu6GGs9kce0BL3taIHZCybq6F-UjuBSI61Z1QqlsX4x5ZmUFvyCp29ElsSTa97Q1RLq2mWkMDsVhggZYeHMEnE"
-    ],
-    description: "Sharp lapels, minimalist horn buttons, an unlined construction for warm-weather formality. Made to order against your measurements.",
+    colors: ["#1b2a4a"],
+    sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: [],
+    placeholderSwatch: {
+      bg: "#1b2a4a",
+      front: { text: "JUST BE RESILIENT", style: "elegant-serif", color: "#ffffff" },
+      back: { text: "RESILIENT / facing difficulties head-on / TAKE CONTROL, LIVE YOUR DREAMS / El Vynce", style: "bold-sans-plus-script", color: "#ffffff" }
+    },
+    description: "Navy tee — front print \"JUST BE RESILIENT\" in elegant serif. Back print: \"RESILIENT\" in bold sans-serif, with sub-text \"facing difficulties head-on\" and \"TAKE CONTROL, LIVE YOUR DREAMS,\" plus the El Vynce signature-script logo.",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-006",
+    name: "Dare to Be Different",
+    drop: "Warrior Drop",
+    price: 4800, // PLACEHOLDER PRICE — pending client confirmation
+    currency: "INR",
+    colors: ["#000000"],
+    sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: [],
+    placeholderSwatch: {
+      bg: "#000000",
+      front: { text: "Dare to be different. Anything is possible if you believe. The future is ours", style: "hand-drawn-scribble", color: "#ffffff" },
+      back: { text: "UNREAL / Exclusive Members Only (DESIGNED AND DEVELOPED) / El Vynce", style: "collegiate-bold-plus-script", color: "#ffffff" }
+    },
+    description: "Black tee — front print: a hand-drawn-style squiggle/scribble wordmark with small text along it: \"Dare to be different. Anything is possible if you believe. The future is ours.\" Back print: \"UNREAL\" in bold collegiate lettering with \"Exclusive Members Only (DESIGNED AND DEVELOPED)\" and the El Vynce signature-script logo.",
     inStock: true,
     isNew: false
   },
   {
-    id: "ev-006",
-    name: "Absolute Poplin Shirt",
-    drop: "Drop 02",
-    price: 4800,
+    id: "ev-006b",
+    name: "Built Different",
+    drop: "Warrior Drop",
+    price: 4800, // PLACEHOLDER PRICE — pending client confirmation
     currency: "INR",
-    colors: ["#ffffff", "#f5f5f0"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCQPgZdoPKRHs6S6mNelA7HqsE0BnaGBw0mab3Kd9b8Fl1eGdYij_lZziIXIIPKK5B7piNriV-MCthz_X38XMaj5QWTiwIdXENQTXWm-cV7v7XJxdaA7uAvlum3yOZkN8xLdKvh4gAB9VoP2AOawCDJVOgyJUfYTmG_kuqa7nfHBZggHEY9QGzr7Saq484DaHM52Rc5v77QcOqWpfdjN7pOHVLaZV6-yeQCiB_y9oeXYjdRi15eBpbAH_VL8GwfcvDpwcL_xA6WBM4",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBd1EZX-1GvY-8HcGndSy0gcVI4pfIE1pNkOVvOTxSMgi1lEERbskoVTCe0UFxCk8A4ETxdX45FzYyFw4slZvy0SJxml0YZLJxxsuM3wyWKcMwcm0juhjSbHVqn0Jz1rx2eC0hutZcWKoJchC61JdDGulSDYAaisax5lfMDhQyAXdiW2DGbEEogypV6G4dIakk3HstT8xHfYA1p2fHPpQwn4eOuUCqLQYkFadQl-6Qk9_vlIA4YkUrt9w36tLz2zrCuOOP1Fk2S2w8"
-    ],
-    description: "Crisp cotton poplin with a concealed placket, cut for a clean, shadowless silhouette. An everyday essential made the EL VYNCE way.",
+    colors: ["#8a9a7b"],
+    sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: [],
+    placeholderSwatch: {
+      bg: "#8a9a7b",
+      front: { text: "Built Different", style: "gothic-blackletter", color: "#000000" },
+      back: { text: "COMFORT ZONES ARE OVERRATED / Built Different / ESTD.2025", style: "tall-serif-caps-plus-script", color: "#000000" }
+    },
+    description: "Sage green tee — front print \"Built Different\" in gothic/blackletter font. Back print: \"COMFORT ZONES ARE OVERRATED\" in tall serif caps, overlaid with the script \"Built Different\" and \"ESTD.2025.\" Note: 2 crop-tops are still pending for this Drop and are not included here.",
     inStock: true,
     isNew: false
   },

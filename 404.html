@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Page Not Found — EL VYNCE</title>
+<meta name="description" content="The page you're looking for could not be found."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: "#000000", "on-primary": "#ffffff", secondary: "#666666" },
+        fontFamily: { "headline-lg": ["Bodoni Moda"], "label-sm": ["Inter"], "body-md": ["Inter"] },
+        fontSize: {
+          "display-404": ["120px", { lineHeight: "120px", letterSpacing: "-0.02em", fontWeight: "400" }],
+          "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.1em", fontWeight: "500" }]
+        }
+      }
+    }
+  };
+</script>
+</head>
+<body class="bg-white text-primary font-body-md overflow-x-hidden">
+
+<main class="min-h-screen flex flex-col items-center justify-center text-center px-6">
+  <h1 class="font-headline-lg text-display-404 mb-4">404</h1>
+  <h2 class="font-headline-lg text-2xl md:text-3xl mb-6">Page not found</h2>
+  <p class="text-secondary max-w-sm mb-12">The page you're looking for doesn't exist or has moved. Let's get you back to stillness.</p>
+  <a href="index.html" class="bg-primary text-on-primary px-8 py-4 label-sm hover:opacity-90 transition-opacity">Back to Home</a>
+</main>
+
+</body>
+</html>

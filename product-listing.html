@@ -40,6 +40,8 @@
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="index.html">Home</a>
       <a class="label-sm text-primary border-b border-primary pb-1" href="product-listing.html">Shop</a>
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="about.html">About</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="faq.html">FAQ</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="account.html">Account</a>
     </div>
     <div class="flex items-center gap-6">
       <button class="relative" onclick="evToggleCart()" aria-label="Open cart">
@@ -53,6 +55,8 @@
     <a class="label-sm text-on-surface-variant" href="index.html">Home</a>
     <a class="label-sm text-primary" href="product-listing.html">Shop</a>
     <a class="label-sm text-on-surface-variant" href="about.html">About</a>
+    <a class="label-sm text-on-surface-variant" href="faq.html">FAQ</a>
+    <a class="label-sm text-on-surface-variant" href="account.html">Account</a>
   </div>
 </nav>
 
@@ -168,7 +172,7 @@
           <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
           ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
-          <img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>
+          ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
         </div>
         <div class="flex flex-col gap-1">
           <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>

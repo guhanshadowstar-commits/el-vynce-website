@@ -131,6 +131,22 @@ canvas#hero-shader, canvas#pdp-three {
   pointer-events: none;
 }
 
+/* Light-hero variant of the wordmark — used now that the hero background is
+   white/silhouette rather than a dark photo, so no mix-blend-mode is needed. */
+.hero-wordmark-light {
+  font-family: 'Bodoni Moda', serif;
+  letter-spacing: -0.02em;
+  line-height: 0.9;
+  color: var(--black);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+#hero-silhouette canvas {
+  pointer-events: none;
+  display: block;
+}
+
 .fade-in {
   animation: fadeIn 0.5s ease both;
 }

@@ -43,6 +43,8 @@
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="index.html">Home</a>
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="product-listing.html">Shop</a>
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="about.html">About</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="faq.html">FAQ</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="account.html">Account</a>
     </div>
     <div class="flex items-center gap-6">
       <button class="relative" onclick="evToggleCart()" aria-label="Open cart">
@@ -56,6 +58,8 @@
     <a class="label-sm text-on-surface-variant" href="index.html">Home</a>
     <a class="label-sm text-on-surface-variant" href="product-listing.html">Shop</a>
     <a class="label-sm text-on-surface-variant" href="about.html">About</a>
+    <a class="label-sm text-on-surface-variant" href="faq.html">FAQ</a>
+    <a class="label-sm text-on-surface-variant" href="account.html">Account</a>
   </div>
 </nav>
 
@@ -167,7 +171,9 @@
         <!-- Gallery -->
         <div class="lg:col-span-7 flex flex-col gap-6">
           <div class="relative aspect-[4/5] bg-surface-container overflow-hidden group">
-            <img id="pdp-main-image" class="w-full h-full object-cover" src="${product.images[0]}" alt="${product.name}"/>
+            ${product.images && product.images.length
+              ? `<img id="pdp-main-image" class="w-full h-full object-cover" src="${product.images[0]}" alt="${product.name}"/>`
+              : `<div id="pdp-main-image-placeholder" class="w-full h-full">${evRenderPlaceholderSwatch(product, { sizeClass: "w-full h-full" })}</div>`}
             <div class="absolute top-6 left-6 glass px-4 py-2">
               <span class="label-sm">${product.drop}</span>
             </div>
@@ -184,7 +190,7 @@
             </div>
           </div>
           <div class="flex gap-4 overflow-x-auto no-scrollbar">
-            ${product.images.map((img, i) => `
+            ${(product.images || []).map((img, i) => `
               <button class="w-24 h-32 flex-shrink-0 bg-surface-container border ${i === 0 ? "border-primary/30" : "border-transparent"} overflow-hidden" onclick="document.getElementById('pdp-main-image').src='${img}'">
                 <img class="w-full h-full object-cover" src="${img}" alt="${product.name} detail ${i + 1}"/>
               </button>
@@ -246,7 +252,7 @@
           ${others.map((p) => `
             <a href="product-detail.html?id=${p.id}" class="group block">
               <div class="aspect-[3/4] bg-surface-container overflow-hidden mb-4">
-                <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" src="${p.images[0]}" alt="${p.name}"/>
+                ${p.images && p.images.length ? `<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" src="${p.images[0]}" alt="${p.name}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "w-full h-full" })}
               </div>
               <h3 class="label-sm tracking-wider text-primary">${p.name}</h3>
               <p class="text-secondary">${evFormatPrice(p.price)}</p>
@@ -277,7 +283,8 @@
       price: evCurrentProduct.price,
       color: evSelectedColor,
       size: evSelectedSize,
-      image: evCurrentProduct.images[0],
+      image: (evCurrentProduct.images && evCurrentProduct.images[0]) || "",
+      placeholderSwatch: evCurrentProduct.placeholderSwatch || null,
       drop: evCurrentProduct.drop,
       qty: 1
     });

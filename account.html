@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Shipping &amp; Returns — EL VYNCE</title>
+<title>Account — EL VYNCE</title>
+<meta name="description" content="Sign in to your EL VYNCE account."/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -20,7 +21,6 @@
           "headline-lg-mobile": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "400" }],
           "headline-md": ["32px", { lineHeight: "40px", fontWeight: "400" }],
           "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.1em", fontWeight: "500" }],
-          "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "0.01em", fontWeight: "400" }],
           "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }]
         }
       }
@@ -31,6 +31,7 @@
 </head>
 <body class="bg-white text-primary font-body-md overflow-x-hidden">
 
+<!-- ===== Shared Nav ===== -->
 <nav class="fixed top-0 w-full z-50 glass border-b border-outline-variant/30" data-main-nav>
   <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
     <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter">EL VYNCE</a>
@@ -39,7 +40,7 @@
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="product-listing.html">Shop</a>
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="about.html">About</a>
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="faq.html">FAQ</a>
-      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="account.html">Account</a>
+      <a class="label-sm text-primary border-b border-primary pb-1" href="account.html">Account</a>
     </div>
     <div class="flex items-center gap-6">
       <button class="relative" onclick="evToggleCart()" aria-label="Open cart">
@@ -54,49 +55,33 @@
     <a class="label-sm text-on-surface-variant" href="product-listing.html">Shop</a>
     <a class="label-sm text-on-surface-variant" href="about.html">About</a>
     <a class="label-sm text-on-surface-variant" href="faq.html">FAQ</a>
-    <a class="label-sm text-on-surface-variant" href="account.html">Account</a>
+    <a class="label-sm text-primary" href="account.html">Account</a>
   </div>
 </nav>
 
-<main class="pt-32 pb-section-gap max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop">
-  <header class="mb-16">
-    <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-4">Shipping &amp; Returns</h1>
-    <p class="text-secondary">Last updated: 2026-06-27</p>
+<main class="pt-32 pb-section-gap max-w-md mx-auto px-margin-mobile md:px-margin-desktop min-h-[70vh] flex flex-col justify-center">
+  <header class="mb-12 text-center">
+    <h1 class="font-headline-lg text-headline-lg-mobile mb-3">Sign In</h1>
+    <p class="text-secondary">Access your EL VYNCE account.</p>
   </header>
 
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Shipping</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>Every EL VYNCE piece is made to order. Production begins once your order has been placed, and orders are processed within <strong class="text-primary">3–5 business days</strong> after payment confirmation.</p>
-      <p>Estimated delivery is <strong class="text-primary">5–7 working days</strong> within India. Delivery timelines may vary depending on your location and the courier partner handling your shipment.</p>
-      <p>Once your order ships, you will receive tracking information via email.</p>
-      <p>If an order is undelivered due to an incorrect address or a failed delivery attempt, it will be returned to our facility. In this case, you may choose to have the order reshipped (additional shipping cost may apply) or cancelled — provided you let us know before the order is reprocessed.</p>
+  <form class="glass p-8 md:p-10 space-y-8" onsubmit="return false;">
+    <div class="relative">
+      <label class="block label-sm text-secondary mb-2">Email Address</label>
+      <input class="w-full input-underline py-2" type="email" placeholder="you@example.com" disabled/>
     </div>
-  </section>
-
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Cancellations</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>Orders cannot be cancelled once they have entered printing or production. If you need to cancel, please email <a class="text-primary underline" href="mailto:elvynceofficial@gmail.com">elvynceofficial@gmail.com</a> immediately — cancellation is only possible before your order enters processing.</p>
+    <div class="relative">
+      <label class="block label-sm text-secondary mb-2">Password</label>
+      <input class="w-full input-underline py-2" type="password" placeholder="••••••••" disabled/>
     </div>
-  </section>
-
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Returns, Exchanges &amp; Refunds</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>As each EL VYNCE piece is custom, printed-on-demand, and made to order, we do not offer returns, exchanges, or refunds once an order has been placed. This policy protects the quality, hygiene, and personalization integrity of every garment we produce.</p>
-    </div>
-  </section>
-
-  <section class="mb-16">
-    <h2 class="font-headline-md text-headline-md mb-6">Damaged or Misprinted Items</h2>
-    <div class="space-y-5 text-secondary leading-relaxed">
-      <p>If your item arrives damaged or misprinted, please contact us within <strong class="text-primary">48 hours of delivery</strong> at <a class="text-primary underline" href="mailto:elvynceofficial@gmail.com">elvynceofficial@gmail.com</a> with photos of the issue and your order receipt.</p>
-      <p>Once verified, we will provide a free replacement. Please note: cash refunds are never issued under any circumstance.</p>
-    </div>
-  </section>
+    <button class="w-full bg-primary text-on-primary py-5 font-headline-md text-body-lg opacity-40 cursor-not-allowed" type="submit" disabled>
+      Sign In
+    </button>
+    <p class="label-sm text-secondary text-center">Account system coming soon</p>
+  </form>
 </main>
 
+<!-- ===== Cart Drawer (global) ===== -->
 <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">
   <div class="absolute inset-0" onclick="evToggleCart()"></div>
   <aside class="absolute top-0 right-0 h-full w-full max-w-md glass-strong border-l border-outline-variant/30 flex flex-col translate-x-full" id="cart-drawer">
@@ -119,6 +104,7 @@
   </aside>
 </div>
 
+<!-- ===== Shared Footer ===== -->
 <footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
   <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
     <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>

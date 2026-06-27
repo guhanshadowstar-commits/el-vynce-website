@@ -91,9 +91,14 @@ function evRenderCart() {
   cart.forEach((item, index) => {
     const row = document.createElement("div");
     row.className = "flex gap-6 items-start fade-in";
+    const thumb = item.image
+      ? `<img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover" />`
+      : (typeof evRenderPlaceholderSwatch === "function"
+          ? evRenderPlaceholderSwatch({ name: item.name, placeholderSwatch: item.placeholderSwatch }, { sizeClass: "w-full h-full" })
+          : "");
     row.innerHTML = `
       <div class="w-24 h-24 bg-surface-container flex-shrink-0 overflow-hidden">
-        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover" />
+        ${thumb}
       </div>
       <div class="flex-1 space-y-1">
         <div class="flex justify-between items-start">
