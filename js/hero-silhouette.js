@@ -6,40 +6,15 @@
 
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
-const TAGLINES = ["STYLE PAYS OFF", "JUST BE RESILIENT", "DARE TO BE DIFFERENT", "BUILT DIFFERENT"];
+// Real Warrior Drop product photography — front print of each tee, mapped onto the figures.
+const SHIRT_IMAGES = [
+  "images/products/style-pays-off-front.png",
+  "images/products/just-be-resilient-front.png",
+  "images/products/dare-to-be-different-front.png",
+  "images/products/built-different-front.png",
+];
 const FIGURE_COUNT = 5;
-
-function paintTagline(canvas, text) {
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "bold 46px 'Bodoni Moda', serif";
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-  const words = text.split(" ");
-  const maxWidth = canvas.width * 0.82;
-  const lines = [];
-  let current = "";
-  words.forEach((w) => {
-    const test = current ? current + " " + w : w;
-    if (ctx.measureText(test).width > maxWidth && current) {
-      lines.push(current);
-      current = w;
-    } else {
-      current = test;
-    }
-  });
-  if (current) lines.push(current);
-  const lineHeight = 56;
-  const startY = cy - ((lines.length - 1) * lineHeight) / 2;
-  lines.forEach((line, i) => {
-    ctx.fillText(line, cx, startY + i * lineHeight);
-  });
-}
+const textureLoader = new THREE.TextureLoader();
 
 function addEdges(mesh, color = 0x000000) {
   const edges = new THREE.EdgesGeometry(mesh.geometry);
@@ -68,7 +43,7 @@ function makeLimbPair(upperLen, upperRadius, lowerLen, lowerRadius, originY, sid
   return { upperGroup, lowerGroup };
 }
 
-function createFigure(taglineText) {
+function createFigure(shirtImageUrl) {
   // Solid-shaded matte material (not wireframe) — needs real lights in the scene to read.
   const skin = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.05 });
 
@@ -79,12 +54,10 @@ function createFigure(taglineText) {
   torso.position.set(0, 1.05, 0);
   figure.add(torso);
 
-  const shirtCanvas = document.createElement("canvas");
-  shirtCanvas.width = 512;
-  shirtCanvas.height = 512;
-  paintTagline(shirtCanvas, taglineText);
-  const shirtTexture = new THREE.CanvasTexture(shirtCanvas);
-  const shirtGeo = new THREE.PlaneGeometry(0.56, 0.56);
+  // Real product photo (front of the tee) mapped onto a plane on the chest.
+  const shirtTexture = textureLoader.load(shirtImageUrl);
+  shirtTexture.colorSpace = THREE.SRGBColorSpace;
+  const shirtGeo = new THREE.PlaneGeometry(0.46, 0.6);
   const shirtMat = new THREE.MeshBasicMaterial({ map: shirtTexture, transparent: true, depthWrite: false });
   const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
   shirtMesh.position.set(0, 0.05, 0.345);
@@ -227,8 +200,8 @@ function initHeroSilhouette() {
 
   const npcs = [];
   for (let i = 0; i < FIGURE_COUNT; i++) {
-    const tagline = TAGLINES[i % TAGLINES.length];
-    const fig = createFigure(tagline);
+    const shirtUrl = SHIRT_IMAGES[i % SHIRT_IMAGES.length];
+    const fig = createFigure(shirtUrl);
     scene.add(fig.group);
 
     npcs.push({

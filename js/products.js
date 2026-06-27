@@ -30,7 +30,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#b3001b"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: [],
+    images: ["images/products/rebel-soul-front.png", "images/products/rebel-soul-back.png"],
     placeholderSwatch: {
       bg: "#b3001b",
       front: { text: "REBEL SOUL", style: "serif", color: "#ffffff" },
@@ -48,13 +48,26 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#d8c3a5"],
     sizes: ["28", "30", "32", "34", "36"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: [],
+    images: ["images/products/frequency-front.png", "images/products/frequency-back.png"],
     placeholderSwatch: {
       bg: "#d8c3a5",
       front: { text: "FREQUENCY", style: "thin-sans", color: "#000000" },
       back: { text: "Everything is energy and a vibrational frequency that includes you", style: "sacred-geometry", color: "#000000" }
     },
     description: "Tan/beige tee — front print \"FREQUENCY\" in a thin elegant sans-serif wordmark. Back print: a vertical column of geometric/sacred-geometry symbols (triangle, bowtie, cone, sphere, rings, cube) with the line \"Everything is energy and a vibrational frequency that includes you.\"",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-003b",
+    name: "Inner Noise",
+    drop: "Drop 01",
+    price: 6200, // PLACEHOLDER PRICE — pending client confirmation
+    currency: "INR",
+    colors: ["#0e6b73"],
+    sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: ["images/products/inner-noise-front.png", "images/products/inner-noise-back.png"],
+    description: "Teal tee — front print \"INNER NOISE\" in a tall serif wordmark. Back print: an illustrated profile portrait wrapped in looping arrow-paths with small surrounding captions, with \"INNER NOISE\" set across the chest.",
     inStock: true,
     isNew: true
   },
@@ -66,7 +79,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#f1ead9"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: [],
+    images: ["images/products/style-pays-off-front.png"],
     placeholderSwatch: {
       bg: "#f1ead9",
       front: { text: "STYLE PAYS OFF", style: "barcode", color: "#000000" }
@@ -83,7 +96,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#1b2a4a"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: [],
+    images: ["images/products/just-be-resilient-front.png", "images/products/just-be-resilient-back.png"],
     placeholderSwatch: {
       bg: "#1b2a4a",
       front: { text: "JUST BE RESILIENT", style: "elegant-serif", color: "#ffffff" },
@@ -101,7 +114,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#000000"],
     sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: [],
+    images: ["images/products/dare-to-be-different-front.png", "images/products/dare-to-be-different-back.png"],
     placeholderSwatch: {
       bg: "#000000",
       front: { text: "Dare to be different. Anything is possible if you believe. The future is ours", style: "hand-drawn-scribble", color: "#ffffff" },
@@ -119,15 +132,28 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#8a9a7b"],
     sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: [],
+    images: ["images/products/built-different-front.png", "images/products/built-different-back.png"],
     placeholderSwatch: {
       bg: "#8a9a7b",
       front: { text: "Built Different", style: "gothic-blackletter", color: "#000000" },
       back: { text: "COMFORT ZONES ARE OVERRATED / Built Different / ESTD.2025", style: "tall-serif-caps-plus-script", color: "#000000" }
     },
-    description: "Sage green tee — front print \"Built Different\" in gothic/blackletter font. Back print: \"COMFORT ZONES ARE OVERRATED\" in tall serif caps, overlaid with the script \"Built Different\" and \"ESTD.2025.\" Note: 2 crop-tops are still pending for this Drop and are not included here.",
+    description: "Sage green tee — front print \"Built Different\" in gothic/blackletter font. Back print: \"COMFORT ZONES ARE OVERRATED\" in tall serif caps, overlaid with the script \"Built Different\" and \"ESTD.2025.\"",
     inStock: true,
     isNew: false
+  },
+  {
+    id: "ev-006c",
+    name: "I'm Just a Girl",
+    drop: "Warrior Drop",
+    price: 4800, // PLACEHOLDER PRICE — pending client confirmation
+    currency: "INR",
+    colors: ["#c9a8c4"],
+    sizes: ["XS", "S", "M", "L"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
+    images: ["images/products/im-just-a-girl-front.png"],
+    description: "Lavender crop top — front print: a pink bow graphic with the line \"I'm just a girl.\" Note: 1 more crop-top is still pending for this Drop and is not included here.",
+    inStock: true,
+    isNew: true
   },
   {
     id: "ev-007",
