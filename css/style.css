@@ -143,7 +143,6 @@ canvas#hero-shader, canvas#pdp-three {
 }
 
 #hero-silhouette canvas {
-  pointer-events: none;
   display: block;
 }
 
