@@ -156,8 +156,8 @@
     }
 
     emptyStateEl.classList.add("hidden");
-    gridEl.innerHTML = matches.map((p) => `
-      <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}">
+    gridEl.innerHTML = matches.map((p, i) => `
+      <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}" data-reveal data-reveal-delay="${(i % 4) * 90}">
         <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
           <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}

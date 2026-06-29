@@ -25,6 +25,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Letter-stagger entrance for the hero wordmark — each character fades/lifts
+  // in with a short delay after the previous one, instead of appearing all at once.
+  document.querySelectorAll(".hero-wordmark-light").forEach((el) => {
+    const text = el.textContent;
+    el.textContent = "";
+    text.split("").forEach((ch, i) => {
+      const span = document.createElement("span");
+      span.className = "letter";
+      span.style.animationDelay = `${0.5 + i * 0.05}s`;
+      span.textContent = ch === " " ? " " : ch;
+      el.appendChild(span);
+    });
+  });
+
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");
   const mobileMenu = document.getElementById("mobile-menu");
   if (mobileMenuBtn && mobileMenu) {

@@ -32,13 +32,17 @@ function initCustomCursor() {
   document.addEventListener("mouseover", (e) => {
     if (e.target.closest && e.target.closest(growSelector)) {
       ring.classList.add("is-grown");
+      dot.classList.add("is-grown");
     }
   });
   document.addEventListener("mouseout", (e) => {
     if (e.target.closest && e.target.closest(growSelector)) {
       ring.classList.remove("is-grown");
+      dot.classList.remove("is-grown");
     }
   });
+  document.addEventListener("mousedown", () => ring.classList.add("is-clicking"));
+  document.addEventListener("mouseup", () => ring.classList.remove("is-clicking"));
 
   function raf() {
     dotX += (mouseX - dotX) * 0.35;

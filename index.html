@@ -165,8 +165,8 @@
     const grid = document.getElementById("featured-grid");
     if (!grid || !window.EL_VYNCE_PRODUCTS) return;
     const featured = EL_VYNCE_PRODUCTS.slice(0, 4);
-    grid.innerHTML = featured.map((p) => `
-      <a href="product-detail.html?id=${p.id}" class="product-card group block">
+    grid.innerHTML = featured.map((p, i) => `
+      <a href="product-detail.html?id=${p.id}" class="product-card group block" data-reveal data-reveal-delay="${i * 90}">
         <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
           <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
