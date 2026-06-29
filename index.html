@@ -65,14 +65,16 @@
 
 <!-- ===== Hero ===== -->
 <header class="relative w-full h-screen min-h-[640px] overflow-hidden bg-white">
-  <!-- Abstract black wireframe humanoid silhouette (three.js) — replaces real-human photography per client request -->
-  <div id="hero-silhouette" class="absolute inset-0 w-full h-full"></div>
-  <div class="absolute inset-0 bg-black/5 pointer-events-none"></div>
+  <!-- Real photography of a man walking, per client request — grayscale-filtered to match the monochrome design system. -->
+  <div class="absolute inset-0 w-full h-full overflow-hidden" id="hero-photo-wrap">
+    <img src="images/hero-real.jpg" alt="Man walking, wearing a plain tee" class="absolute inset-0 w-full h-full object-cover grayscale" id="hero-photo" style="object-position: center 20%;"/>
+  </div>
+  <div class="absolute inset-0 bg-black/15 pointer-events-none"></div>
   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
     <h1 class="hero-wordmark-light text-center text-[18vw] md:text-[14vw] tracking-tight select-none">EL VYNCE</h1>
   </div>
   <div class="absolute bottom-0 left-0 w-full px-margin-mobile md:px-margin-desktop pb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6 max-w-container-max mx-auto">
-    <p class="font-body-lg text-body-lg text-primary max-w-md">Made-to-order Indian clothing, cut for stillness. Every piece begins after you place your order.</p>
+    <p class="font-body-lg text-body-lg text-white max-w-md">Made-to-order Indian clothing, cut for stillness. Every piece begins after you place your order.</p>
     <a href="product-listing.html" data-magnetic class="bg-primary text-on-primary px-8 py-4 label-sm w-fit hover:opacity-90 transition-opacity">Shop the Collection</a>
   </div>
 
@@ -84,6 +86,11 @@
       <input id="hero-search-input" type="text" placeholder="Ask EL VYNCE to find your next piece…" class="bg-transparent border-none outline-none flex-1 font-body-md text-primary placeholder:text-secondary" />
       <span class="material-symbols-outlined text-secondary cursor-pointer" id="hero-search-submit">search</span>
     </div>
+  </div>
+
+  <!-- Real Warrior Drop tees, shown as clickable cards over the photo since the exact prints can't be composited onto stock photography. -->
+  <div class="absolute bottom-32 md:bottom-24 left-0 w-full px-margin-mobile md:px-margin-desktop overflow-x-auto no-scrollbar" id="hero-product-rail">
+    <div class="flex gap-4 max-w-container-max mx-auto" id="hero-product-rail-inner"></div>
   </div>
 </header>
 
@@ -143,7 +150,57 @@
 <script src="js/cart.js"></script>
 <script src="js/main.js"></script>
 <script src="js/interactions.js"></script>
-<script type="module" src="js/hero-silhouette.js"></script>
+<script>
+  // ---- Hero photo: subtle mouse-tilt parallax + scroll zoom (replaces the old three.js scene's camera effects) ----
+  document.addEventListener("DOMContentLoaded", () => {
+    const photo = document.getElementById("hero-photo");
+    const heroHeader = photo ? photo.closest("header") : null;
+    if (photo && heroHeader) {
+      let tiltX = 0, tiltY = 0, targetTiltX = 0, targetTiltY = 0;
+      window.addEventListener("mousemove", (e) => {
+        const rect = heroHeader.getBoundingClientRect();
+        if (rect.top > window.innerHeight || rect.bottom < 0) return;
+        targetTiltX = ((e.clientX / window.innerWidth) - 0.5) * 2;
+        targetTiltY = ((e.clientY / window.innerHeight) - 0.5) * 2;
+      });
+      let scrollScale = 1;
+      function updateScrollZoom() {
+        const rect = heroHeader.getBoundingClientRect();
+        const total = rect.height || window.innerHeight;
+        const progress = Math.min(1, Math.max(0, -rect.top / total));
+        scrollScale = 1 + progress * 0.18;
+      }
+      window.addEventListener("scroll", updateScrollZoom, { passive: true });
+      updateScrollZoom();
+      function tick() {
+        tiltX += (targetTiltX - tiltX) * 0.05;
+        tiltY += (targetTiltY - tiltY) * 0.05;
+        photo.style.transform = `scale(${scrollScale}) translate(${tiltX * -10}px, ${tiltY * -8}px)`;
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }
+  });
+
+  // ---- Real Warrior Drop product rail over the hero photo ----
+  document.addEventListener("DOMContentLoaded", () => {
+    const rail = document.getElementById("hero-product-rail-inner");
+    if (!rail || !window.EL_VYNCE_PRODUCTS) return;
+    const warriorDrop = EL_VYNCE_PRODUCTS.filter((p) => p.drop === "Warrior Drop");
+    rail.innerHTML = warriorDrop.map((p, i) => `
+      <a href="product-detail.html?id=${p.id}" data-magnetic data-reveal data-reveal-delay="${i * 80}"
+         class="glass-strong flex items-center gap-3 px-4 py-3 shrink-0 hover:bg-white/80 transition-colors">
+        <div class="w-12 h-12 overflow-hidden shrink-0 bg-surface-container">
+          ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" class="w-full h-full object-cover"/>` : ""}
+        </div>
+        <div class="flex flex-col">
+          <span class="label-sm text-primary whitespace-nowrap">${p.name}</span>
+          <span class="label-sm text-secondary text-[10px]">${evFormatPrice(p.price)}</span>
+        </div>
+      </a>
+    `).join("");
+  });
+</script>
 <script>
   function evHeroSearchNavigate() {
     const input = document.getElementById("hero-search-input");
