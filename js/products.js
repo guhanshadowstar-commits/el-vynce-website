@@ -30,7 +30,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#b3001b"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/rebel-soul-front.png", "images/products/rebel-soul-back.png"],
+    images: ["images/products/rebel-soul-front.jpg", "images/products/rebel-soul-back.jpg"],
     placeholderSwatch: {
       bg: "#b3001b",
       front: { text: "REBEL SOUL", style: "serif", color: "#ffffff" },
@@ -48,7 +48,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#d8c3a5"],
     sizes: ["28", "30", "32", "34", "36"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/frequency-front.png", "images/products/frequency-back.png"],
+    images: ["images/products/frequency-front.jpg", "images/products/frequency-back.jpg"],
     placeholderSwatch: {
       bg: "#d8c3a5",
       front: { text: "FREQUENCY", style: "thin-sans", color: "#000000" },
@@ -66,7 +66,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#0e6b73"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/inner-noise-front.png", "images/products/inner-noise-back.png"],
+    images: ["images/products/inner-noise-front.jpg", "images/products/inner-noise-back.jpg"],
     description: "Teal tee — front print \"INNER NOISE\" in a tall serif wordmark. Back print: an illustrated profile portrait wrapped in looping arrow-paths with small surrounding captions, with \"INNER NOISE\" set across the chest.",
     inStock: true,
     isNew: true
@@ -79,7 +79,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#f1ead9"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/style-pays-off-front.png"],
+    images: ["images/products/style-pays-off-front.jpg"],
     placeholderSwatch: {
       bg: "#f1ead9",
       front: { text: "STYLE PAYS OFF", style: "barcode", color: "#000000" }
@@ -96,7 +96,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#1b2a4a"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/just-be-resilient-front.png", "images/products/just-be-resilient-back.png"],
+    images: ["images/products/just-be-resilient-front.jpg", "images/products/just-be-resilient-back.jpg"],
     placeholderSwatch: {
       bg: "#1b2a4a",
       front: { text: "JUST BE RESILIENT", style: "elegant-serif", color: "#ffffff" },
@@ -114,7 +114,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#000000"],
     sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/dare-to-be-different-front.png", "images/products/dare-to-be-different-back.png"],
+    images: ["images/products/dare-to-be-different-front.jpg", "images/products/dare-to-be-different-back.jpg"],
     placeholderSwatch: {
       bg: "#000000",
       front: { text: "Dare to be different. Anything is possible if you believe. The future is ours", style: "hand-drawn-scribble", color: "#ffffff" },
@@ -132,7 +132,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#8a9a7b"],
     sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/built-different-front.png", "images/products/built-different-back.png"],
+    images: ["images/products/built-different-front.jpg", "images/products/built-different-back.jpg"],
     placeholderSwatch: {
       bg: "#8a9a7b",
       front: { text: "Built Different", style: "gothic-blackletter", color: "#000000" },
@@ -150,7 +150,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#c9a8c4"],
     sizes: ["XS", "S", "M", "L"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
-    images: ["images/products/im-just-a-girl-front.png"],
+    images: ["images/products/im-just-a-girl-front.jpg"],
     description: "Lavender crop top — front print: a pink bow graphic with the line \"I'm just a girl.\" Note: 1 more crop-top is still pending for this Drop and is not included here.",
     inStock: true,
     isNew: true

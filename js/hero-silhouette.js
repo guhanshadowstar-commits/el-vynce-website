@@ -8,10 +8,10 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 
 // Real Warrior Drop product photography — front print of each tee, mapped onto the figures.
 const SHIRT_IMAGES = [
-  "images/products/style-pays-off-front.png",
-  "images/products/just-be-resilient-front.png",
-  "images/products/dare-to-be-different-front.png",
-  "images/products/built-different-front.png",
+  "images/products/style-pays-off-front.jpg",
+  "images/products/just-be-resilient-front.jpg",
+  "images/products/dare-to-be-different-front.jpg",
+  "images/products/built-different-front.jpg",
 ];
 const FIGURE_COUNT = 5;
 const textureLoader = new THREE.TextureLoader();
