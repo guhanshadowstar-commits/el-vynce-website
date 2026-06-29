@@ -65,9 +65,12 @@
 
 <!-- ===== Hero ===== -->
 <header class="relative w-full h-screen min-h-[640px] overflow-hidden bg-white">
-  <!-- Real photography of a man walking, per client request — grayscale-filtered to match the monochrome design system. -->
+  <!-- Real photography of men walking, per client request — grayscale-filtered to match the monochrome design system.
+       Three photos crossfade slowly for variety, each with its own subtle mouse-tilt/scroll-zoom treatment. -->
   <div class="absolute inset-0 w-full h-full overflow-hidden" id="hero-photo-wrap">
-    <img src="images/hero-real.jpg" alt="Man walking, wearing a plain tee" class="absolute inset-0 w-full h-full object-cover grayscale" id="hero-photo" style="object-position: center 20%;"/>
+    <img src="images/hero-real.jpg" alt="Man walking, wearing a plain tee" class="hero-photo-slide absolute inset-0 w-full h-full object-cover grayscale is-active" data-hero-photo style="object-position: center 20%;"/>
+    <img src="images/hero-real-2.jpg" alt="Man walking, wearing a plain tee" class="hero-photo-slide absolute inset-0 w-full h-full object-cover grayscale" data-hero-photo style="object-position: center 30%;"/>
+    <img src="images/hero-real-3.jpg" alt="Man walking, wearing a plain shirt" class="hero-photo-slide absolute inset-0 w-full h-full object-cover grayscale" data-hero-photo style="object-position: center 15%;"/>
   </div>
   <div class="absolute inset-0 bg-black/15 pointer-events-none"></div>
   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -151,11 +154,20 @@
 <script src="js/main.js"></script>
 <script src="js/interactions.js"></script>
 <script>
-  // ---- Hero photo: subtle mouse-tilt parallax + scroll zoom (replaces the old three.js scene's camera effects) ----
+  // ---- Hero photo: crossfade rotation between 3 real photos, plus mouse-tilt parallax + scroll zoom on whichever is active ----
   document.addEventListener("DOMContentLoaded", () => {
-    const photo = document.getElementById("hero-photo");
-    const heroHeader = photo ? photo.closest("header") : null;
-    if (photo && heroHeader) {
+    const photos = Array.from(document.querySelectorAll("[data-hero-photo]"));
+    const heroHeader = photos.length ? photos[0].closest("header") : null;
+    if (photos.length && heroHeader) {
+      // Crossfade rotation
+      let activeIndex = 0;
+      setInterval(() => {
+        photos[activeIndex].classList.remove("is-active");
+        activeIndex = (activeIndex + 1) % photos.length;
+        photos[activeIndex].classList.add("is-active");
+      }, 6000);
+
+      // Mouse-tilt parallax + scroll zoom, applied to all slides so the crossfade looks seamless
       let tiltX = 0, tiltY = 0, targetTiltX = 0, targetTiltY = 0;
       window.addEventListener("mousemove", (e) => {
         const rect = heroHeader.getBoundingClientRect();
@@ -175,7 +187,8 @@
       function tick() {
         tiltX += (targetTiltX - tiltX) * 0.05;
         tiltY += (targetTiltY - tiltY) * 0.05;
-        photo.style.transform = `scale(${scrollScale}) translate(${tiltX * -10}px, ${tiltY * -8}px)`;
+        const transform = `scale(${scrollScale}) translate(${tiltX * -10}px, ${tiltY * -8}px)`;
+        photos.forEach((p) => { p.style.transform = transform; });
         requestAnimationFrame(tick);
       }
       tick();

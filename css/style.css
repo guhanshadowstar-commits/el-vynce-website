@@ -215,6 +215,15 @@ canvas#hero-shader, canvas#pdp-three {
   to { opacity: 0.16; transform: translateY(0); }
 }
 
+.hero-photo-slide {
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+
+.hero-photo-slide.is-active {
+  opacity: 1;
+}
+
 [data-reveal] {
   opacity: 0;
   transform: translateY(24px);
