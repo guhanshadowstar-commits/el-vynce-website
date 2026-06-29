@@ -10,6 +10,19 @@ document.addEventListener("DOMContentLoaded", () => {
         nav.classList.remove("shadow-sm");
       }
     });
+
+    // Highlight the current page's nav link — keeps nav markup identical
+    // across every page (no per-page hardcoded "active" state to drift out of sync).
+    const currentPage = (location.pathname.split("/").pop() || "index.html") || "index.html";
+    nav.querySelectorAll('a[href$=".html"]').forEach((link) => {
+      const linkPage = link.getAttribute("href").split("/").pop();
+      const isActive = linkPage === currentPage || (currentPage === "" && linkPage === "index.html");
+      link.classList.toggle("text-primary", isActive);
+      link.classList.toggle("border-b", isActive);
+      link.classList.toggle("border-primary", isActive);
+      link.classList.toggle("pb-1", isActive);
+      link.classList.toggle("text-on-surface-variant", !isActive);
+    });
   }
 
   const mobileMenuBtn = document.getElementById("mobile-menu-btn");

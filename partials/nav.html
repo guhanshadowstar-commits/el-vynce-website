@@ -1,0 +1,26 @@
+<nav class="fixed top-0 w-full z-50 glass border-b border-outline-variant/30" data-main-nav>
+  <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
+    <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter">EL VYNCE</a>
+    <div class="hidden md:flex gap-10">
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="index.html">Home</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="product-listing.html">Shop</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="about.html">About</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="faq.html">FAQ</a>
+      <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="account.html">Account</a>
+    </div>
+    <div class="flex items-center gap-6">
+      <button class="relative" onclick="evToggleCart()" aria-label="Open cart">
+        <span class="material-symbols-outlined text-primary">shopping_bag</span>
+        <span data-cart-count class="dot absolute -top-2 -right-2 bg-primary text-on-primary text-[10px] w-4 h-4 flex items-center justify-center" style="display:none;">0</span>
+      </button>
+      <button id="mobile-menu-btn" class="md:hidden material-symbols-outlined text-primary">menu</button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden glass border-t border-outline-variant/30 px-margin-mobile py-4 flex flex-col gap-4">
+    <a class="label-sm text-on-surface-variant" href="index.html">Home</a>
+    <a class="label-sm text-on-surface-variant" href="product-listing.html">Shop</a>
+    <a class="label-sm text-on-surface-variant" href="about.html">About</a>
+    <a class="label-sm text-on-surface-variant" href="faq.html">FAQ</a>
+    <a class="label-sm text-on-surface-variant" href="account.html">Account</a>
+  </div>
+</nav>

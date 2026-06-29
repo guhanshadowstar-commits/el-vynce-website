@@ -1,0 +1,21 @@
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">
+  <div class="absolute inset-0" onclick="evToggleCart()"></div>
+  <aside class="absolute top-0 right-0 h-full w-full max-w-md glass-strong border-l border-outline-variant/30 flex flex-col translate-x-full" id="cart-drawer">
+    <div class="flex items-center justify-between px-8 h-20 border-b border-outline-variant/20">
+      <h2 class="font-headline-md text-headline-md">Your Cart</h2>
+      <button class="material-symbols-outlined text-primary" onclick="evToggleCart()">close</button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-8 py-8 no-scrollbar">
+      <p id="cart-empty-state" class="label-sm text-secondary py-12 text-center hidden">Your cart is empty.</p>
+      <div class="space-y-10" id="cart-items-list"></div>
+    </div>
+    <footer class="border-t border-outline-variant/20 p-8 space-y-6">
+      <div class="flex justify-between items-center">
+        <span class="label-sm text-secondary">Subtotal</span>
+        <span class="font-body-lg text-body-lg font-bold" id="cart-subtotal">₹0</span>
+      </div>
+      <p class="label-sm text-secondary/70 text-center">Shipping, taxes, and discounts calculated at checkout.</p>
+      <button data-magnetic class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
+    </footer>
+  </aside>
+</div>
