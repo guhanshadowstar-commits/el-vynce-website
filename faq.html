@@ -61,14 +61,14 @@
 </nav>
 
 <main class="pt-32 pb-section-gap max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop">
-  <header class="mb-16 text-center md:text-left">
+  <header class="mb-16 text-center md:text-left" data-reveal>
     <p class="label-sm text-secondary mb-3">Help Center</p>
     <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-4">Frequently Asked Questions</h1>
     <p class="font-body-lg text-body-lg text-secondary max-w-xl">Everything you need to know about ordering, production, and care of your made-to-order EL VYNCE piece.</p>
   </header>
 
   <section class="space-y-2" id="faq-accordion">
-    <div class="accordion border-b border-outline-variant/40">
+    <div class="accordion border-b border-outline-variant/40" data-reveal data-reveal-delay="0">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">How long does production take?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <div class="accordion border-b border-outline-variant/40">
+    <div class="accordion border-b border-outline-variant/40" data-reveal data-reveal-delay="40">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">How long does delivery take?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -88,7 +88,7 @@
       </div>
     </div>
 
-    <div class="accordion border-b border-outline-variant/40">
+    <div class="accordion border-b border-outline-variant/40" data-reveal data-reveal-delay="80">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">Can I cancel my order?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -98,7 +98,7 @@
       </div>
     </div>
 
-    <div class="accordion border-b border-outline-variant/40">
+    <div class="accordion border-b border-outline-variant/40" data-reveal data-reveal-delay="120">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">My item arrived damaged or misprinted — what do I do?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -108,7 +108,7 @@
       </div>
     </div>
 
-    <div class="accordion border-b border-outline-variant/40">
+    <div class="accordion border-b border-outline-variant/40" data-reveal data-reveal-delay="160">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">Can I return or exchange an item?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -118,7 +118,7 @@
       </div>
     </div>
 
-    <div class="accordion border-b border-outline-variant/40">
+    <div class="accordion border-b border-outline-variant/40" data-reveal data-reveal-delay="200">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">How do I find my size?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -128,7 +128,7 @@
       </div>
     </div>
 
-    <div class="accordion">
+    <div class="accordion" data-reveal data-reveal-delay="240">
       <button class="w-full flex justify-between items-center py-6 text-left group" onclick="evToggleAccordion(this)">
         <span class="font-body-lg text-body-lg group-hover:text-primary transition-colors">Is my payment information secure?</span>
         <span class="material-symbols-outlined accordion-icon text-secondary">add</span>
@@ -139,9 +139,9 @@
     </div>
   </section>
 
-  <div class="mt-16 glass p-8 text-center">
+  <div class="mt-16 glass p-8 text-center" data-reveal>
     <p class="label-sm text-secondary mb-4">Still have questions?</p>
-    <a href="contact.html" class="bg-primary text-on-primary px-8 py-4 label-sm inline-block">Contact Us</a>
+    <a href="contact.html" data-magnetic class="bg-primary text-on-primary px-8 py-4 label-sm inline-block">Contact Us</a>
   </div>
 </main>
 
@@ -163,14 +163,14 @@
         <span class="font-body-lg text-body-lg font-bold" id="cart-subtotal">₹0</span>
       </div>
       <p class="label-sm text-secondary/70 text-center">Shipping, taxes, and discounts calculated at checkout.</p>
-      <button class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
+      <button data-magnetic class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
     </footer>
   </aside>
 </div>
 
 <!-- ===== Shared Footer ===== -->
 <footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
-  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
+  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto" data-reveal>
     <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
     <div class="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-16">
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="shipping-returns.html">Shipping &amp; Returns</a>
@@ -185,5 +185,6 @@
 <script src="js/products.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/main.js"></script>
+<script src="js/interactions.js"></script>
 </body>
 </html>

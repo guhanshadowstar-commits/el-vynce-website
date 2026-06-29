@@ -60,12 +60,12 @@
 </nav>
 
 <main class="pt-32 pb-section-gap max-w-md mx-auto px-margin-mobile md:px-margin-desktop min-h-[70vh] flex flex-col justify-center">
-  <header class="mb-12 text-center">
+  <header class="mb-12 text-center" data-reveal>
     <h1 class="font-headline-lg text-headline-lg-mobile mb-3">Sign In</h1>
     <p class="text-secondary">Access your EL VYNCE account.</p>
   </header>
 
-  <form class="glass p-8 md:p-10 space-y-8" onsubmit="return false;">
+  <form class="glass p-8 md:p-10 space-y-8" onsubmit="return false;" data-reveal data-reveal-delay="80">
     <div class="relative">
       <label class="block label-sm text-secondary mb-2">Email Address</label>
       <input class="w-full input-underline py-2" type="email" placeholder="you@example.com" disabled/>
@@ -99,14 +99,14 @@
         <span class="font-body-lg text-body-lg font-bold" id="cart-subtotal">₹0</span>
       </div>
       <p class="label-sm text-secondary/70 text-center">Shipping, taxes, and discounts calculated at checkout.</p>
-      <button class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
+      <button data-magnetic class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
     </footer>
   </aside>
 </div>
 
 <!-- ===== Shared Footer ===== -->
 <footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
-  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
+  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto" data-reveal>
     <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
     <div class="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-16">
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="shipping-returns.html">Shipping &amp; Returns</a>
@@ -121,5 +121,6 @@
 <script src="js/products.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/main.js"></script>
+<script src="js/interactions.js"></script>
 </body>
 </html>

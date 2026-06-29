@@ -61,7 +61,7 @@
 </nav>
 
 <main class="pt-32 pb-section-gap">
-  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-center md:text-left">
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-center md:text-left" data-reveal>
     <h1 id="search-title" class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-2 tracking-tight">Search</h1>
     <p class="label-sm text-secondary mb-12" id="search-subtitle">Made to order. Production begins after you place your order.</p>
     <div class="w-full h-px bg-outline-variant opacity-70 mb-16"></div>
@@ -71,9 +71,9 @@
   <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
     <div id="search-empty-state" class="hidden text-center py-24">
       <p class="font-body-lg text-body-lg text-secondary mb-8" id="search-empty-text"></p>
-      <a href="product-listing.html" class="bg-primary text-on-primary px-8 py-4 label-sm inline-block">Browse Our Drops</a>
+      <a href="product-listing.html" data-magnetic class="bg-primary text-on-primary px-8 py-4 label-sm inline-block">Browse Our Drops</a>
     </div>
-    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16" data-reveal></div>
   </section>
 </main>
 
@@ -95,14 +95,14 @@
         <span class="font-body-lg text-body-lg font-bold" id="cart-subtotal">₹0</span>
       </div>
       <p class="label-sm text-secondary/70 text-center">Shipping, taxes, and discounts calculated at checkout.</p>
-      <button class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
+      <button data-magnetic class="w-full bg-primary text-on-primary py-5 font-headline-md text-[20px] hover:opacity-90 transition-opacity">Checkout</button>
     </footer>
   </aside>
 </div>
 
 <!-- ===== Shared Footer ===== -->
 <footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
-  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto">
+  <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto" data-reveal>
     <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
     <div class="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-16">
       <a class="label-sm text-on-surface-variant hover:text-primary transition-colors" href="shipping-returns.html">Shipping &amp; Returns</a>
@@ -117,6 +117,7 @@
 <script src="js/products.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/main.js"></script>
+<script src="js/interactions.js"></script>
 <script>
   function evGetSearchQuery() {
     const params = new URLSearchParams(window.location.search);
