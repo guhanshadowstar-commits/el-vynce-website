@@ -26,18 +26,20 @@ function addEdges(mesh, color = 0x000000) {
 }
 
 function makeLimbPair(upperLen, upperRadius, lowerLen, lowerRadius, originY, sideOffset, material) {
+  // No edge-line overlay on limbs — they're small and numerous (5 figures x 8 limb
+  // segments), and the extra LineSegments draw calls were a real cost on mobile GPUs.
   const upperGroup = new THREE.Group();
   upperGroup.position.set(sideOffset, originY, 0);
 
-  const upperGeo = new THREE.CapsuleGeometry(upperRadius, upperLen - upperRadius * 1.4, 4, 8);
-  const upperMesh = addEdges(new THREE.Mesh(upperGeo, material));
+  const upperGeo = new THREE.CapsuleGeometry(upperRadius, upperLen - upperRadius * 1.4, 4, 6);
+  const upperMesh = new THREE.Mesh(upperGeo, material);
   upperMesh.position.set(0, -upperLen / 2, 0);
   upperGroup.add(upperMesh);
 
   const lowerGroup = new THREE.Group();
   lowerGroup.position.set(0, -upperLen, 0);
-  const lowerGeo = new THREE.CapsuleGeometry(lowerRadius, lowerLen - lowerRadius * 1.4, 4, 8);
-  const lowerMesh = addEdges(new THREE.Mesh(lowerGeo, material));
+  const lowerGeo = new THREE.CapsuleGeometry(lowerRadius, lowerLen - lowerRadius * 1.4, 4, 6);
+  const lowerMesh = new THREE.Mesh(lowerGeo, material);
   lowerMesh.position.set(0, -lowerLen / 2, 0);
   lowerGroup.add(lowerMesh);
   upperGroup.add(lowerGroup);
@@ -114,7 +116,7 @@ function createBuilding(w, h, d) {
   }
   const tex = new THREE.CanvasTexture(canvas);
   const mat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 0.95, metalness: 0 });
-  const mesh = addEdges(new THREE.Mesh(geo, mat), 0x111111);
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(0, h / 2, 0);
   return mesh;
 }
@@ -141,9 +143,11 @@ function initHeroSilhouette() {
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  // Capped lower than the device's true pixel ratio — this scene has a lot of geometry,
+  // and rendering at full retina/mobile resolution was the main source of lag.
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setSize(width, height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.domElement.style.cursor = "default";
   mount.appendChild(renderer.domElement);
 
@@ -186,10 +190,11 @@ function initHeroSilhouette() {
   scene.add(gridHelper);
 
   // ---- Simple geometric city skyline flanking the street, both sides ----
-  const buildingRowZ = [-7, -10.5, -14];
+  // Fewer rows than the original pass — same skyline read, noticeably fewer draw calls.
+  const buildingRowZ = [-7, -11];
   [-1, 1].forEach((side) => {
     buildingRowZ.forEach((z, i) => {
-      const count = 3;
+      const count = 2;
       for (let j = 0; j < count; j++) {
         const w = 2.2 + Math.random() * 1.6;
         const h = 3 + Math.random() * (5 + i * 2.5);
@@ -284,13 +289,31 @@ function initHeroSilhouette() {
     const hit = npcUnderPointer(e.clientX, e.clientY);
     if (hit) window.location.href = `product-detail.html?id=${hit.productId}`;
   });
+  // Throttled — raycasting against every figure on every single mousemove event was
+  // a steady extra cost piling on top of the render loop. ~15 checks/sec is plenty
+  // for a hover-cursor change and is unnoticeable to a real user.
+  let lastHoverCheck = 0;
   renderer.domElement.addEventListener("mousemove", (e) => {
+    const now = performance.now();
+    if (now - lastHoverCheck < 66) return;
+    lastHoverCheck = now;
     const hit = npcUnderPointer(e.clientX, e.clientY);
     renderer.domElement.style.cursor = hit ? "pointer" : "default";
   });
 
+  // Pause the render loop entirely once the hero scrolls out of view — no point
+  // burning GPU/CPU on a scene nobody can see, and it stops competing with the
+  // rest of the page's scroll/animation work for the main thread.
+  let isVisible = true;
+  if ("IntersectionObserver" in window && heroHeader) {
+    new IntersectionObserver((entries) => {
+      isVisible = entries[0].isIntersecting;
+    }, { threshold: 0 }).observe(heroHeader);
+  }
+
   function animate() {
     requestAnimationFrame(animate);
+    if (!isVisible) return;
     const t = clock.getElapsedTime();
     const dt = clock.getDelta();
 

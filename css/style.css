@@ -160,47 +160,30 @@ canvas#hero-shader, canvas#pdp-three {
   cursor: none !important;
 }
 
-.ev-cursor-dot, .ev-cursor-ring {
+/* Sharp-edged square cursor — rotates into a diamond on hover. Position is driven
+   by a direct CSS transform (set in JS on mousemove) and eased with a CSS
+   transition below, not a JS rAF loop — cheaper and smoother on the compositor. */
+.ev-cursor-square {
   position: fixed;
   top: 0;
   left: 0;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--black);
   pointer-events: none;
   z-index: 9999;
-  border-radius: 50%;
   will-change: transform;
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease;
 }
 
-.ev-cursor-dot {
-  width: 10px;
-  height: 10px;
-  margin: -5px 0 0 -5px;
-  background: var(--black);
+.ev-cursor-square.is-grown {
+  width: 34px;
+  height: 34px;
+  background: rgba(0, 0, 0, 0.06);
 }
 
-.ev-cursor-ring {
-  width: 40px;
-  height: 40px;
-  margin: -20px 0 0 -20px;
-  border: 1.5px solid var(--black);
-  background: transparent;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-  opacity: 0.7;
-}
-
-.ev-cursor-ring.is-grown {
-  width: 72px;
-  height: 72px;
-  margin: -36px 0 0 -36px;
-  opacity: 1;
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.ev-cursor-dot.is-grown {
-  opacity: 0;
-}
-
-.ev-cursor-ring.is-clicking {
-  background: rgba(0, 0, 0, 0.12);
+.ev-cursor-square.is-clicking {
+  background: rgba(0, 0, 0, 0.18);
   border-width: 2px;
 }
 
@@ -213,15 +196,6 @@ canvas#hero-shader, canvas#pdp-three {
 
 @keyframes ev-letter-in {
   to { opacity: 0.16; transform: translateY(0); }
-}
-
-.hero-photo-slide {
-  opacity: 0;
-  transition: opacity 1.6s ease;
-}
-
-.hero-photo-slide.is-active {
-  opacity: 1;
 }
 
 [data-reveal] {
@@ -253,5 +227,5 @@ canvas#hero-shader, canvas#pdp-three {
 }
 
 @media (pointer: coarse) {
-  .ev-cursor-dot, .ev-cursor-ring { display: none; }
+  .ev-cursor-square { display: none; }
 }
