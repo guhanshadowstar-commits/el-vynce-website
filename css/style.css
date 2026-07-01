@@ -265,10 +265,10 @@ canvas#hero-shader, canvas#pdp-three {
 /* ── Spinning Brand Stamp — fixed, glides site-wide ── */
 .ev-brand-stamp {
   position: fixed;
-  bottom: 24px;
-  right: 20px;
-  width: 110px;
-  height: 110px;
+  bottom: 90px;
+  right: 16px;
+  width: 100px;
+  height: 100px;
   pointer-events: none;
   z-index: 200;
   display: block;
@@ -278,8 +278,8 @@ canvas#hero-shader, canvas#pdp-three {
 
 @media (min-width: 768px) {
   .ev-brand-stamp {
-    bottom: 36px;
-    right: 36px;
+    bottom: 40px;
+    right: 40px;
     width: 148px;
     height: 148px;
   }
