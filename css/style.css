@@ -265,19 +265,24 @@ canvas#hero-shader, canvas#pdp-three {
 /* ── Spinning Brand Stamp — fixed, glides site-wide ── */
 .ev-brand-stamp {
   position: fixed;
-  bottom: 36px;
-  right: 36px;
-  width: 148px;
-  height: 148px;
+  bottom: 24px;
+  right: 20px;
+  width: 110px;
+  height: 110px;
   pointer-events: none;
   z-index: 200;
-  display: none;
+  display: block;
   animation: ev-stamp-float 9s ease-in-out infinite;
   will-change: transform;
 }
 
 @media (min-width: 768px) {
-  .ev-brand-stamp { display: block; }
+  .ev-brand-stamp {
+    bottom: 36px;
+    right: 36px;
+    width: 148px;
+    height: 148px;
+  }
 }
 
 @keyframes ev-stamp-float {
