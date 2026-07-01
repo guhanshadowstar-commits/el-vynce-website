@@ -8,29 +8,42 @@ function initCustomCursor() {
   const isTouch = "ontouchstart" in window;
   if (isCoarse || noHover || isTouch) return;
 
-  // Sharp-edged square cursor (rotates into a diamond on hover) — matches the brand's
-  // "sharp 0px corners" identity instead of a generic circular dot/ring.
-  // Position is set directly via CSS transform on mousemove and eased by a CSS
-  // transition, not a hand-rolled JS lerp loop — smoother on the compositor and
-  // removes a permanently-running requestAnimationFrame loop from the main thread.
-  const cursor = document.createElement("div");
-  cursor.className = "ev-cursor-square";
-  document.body.appendChild(cursor);
+  // Dot + trailing ring cursor — dot snaps instantly, ring follows with CSS lag.
+  const dot = document.createElement("div");
+  dot.className = "ev-cursor-dot";
+  const ring = document.createElement("div");
+  ring.className = "ev-cursor-ring";
+  document.body.appendChild(dot);
+  document.body.appendChild(ring);
   document.documentElement.classList.add("ev-cursor-active");
 
   window.addEventListener("mousemove", (e) => {
-    cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%) rotate(${cursor.classList.contains("is-grown") ? 45 : 0}deg)`;
+    const x = e.clientX, y = e.clientY;
+    dot.style.transform  = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
+    ring.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
   });
 
-  const growSelector = "a, button, [data-cursor-grow], input, textarea, select, .product-image";
+  const hoverSelector = "a, button, [data-cursor-grow], input, textarea, select, .product-image, label";
   document.addEventListener("mouseover", (e) => {
-    if (e.target.closest && e.target.closest(growSelector)) cursor.classList.add("is-grown");
+    if (e.target.closest && e.target.closest(hoverSelector)) {
+      dot.classList.add("is-hovering");
+      ring.classList.add("is-hovering");
+    }
   });
   document.addEventListener("mouseout", (e) => {
-    if (e.target.closest && e.target.closest(growSelector)) cursor.classList.remove("is-grown");
+    if (e.target.closest && e.target.closest(hoverSelector)) {
+      dot.classList.remove("is-hovering");
+      ring.classList.remove("is-hovering");
+    }
   });
-  document.addEventListener("mousedown", () => cursor.classList.add("is-clicking"));
-  document.addEventListener("mouseup", () => cursor.classList.remove("is-clicking"));
+  document.addEventListener("mousedown", () => {
+    dot.classList.add("is-clicking");
+    ring.classList.add("is-clicking");
+  });
+  document.addEventListener("mouseup", () => {
+    dot.classList.remove("is-clicking");
+    ring.classList.remove("is-clicking");
+  });
 }
 
 function initSmoothScroll() {

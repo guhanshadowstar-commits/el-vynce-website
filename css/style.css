@@ -160,31 +160,63 @@ canvas#hero-shader, canvas#pdp-three {
   cursor: none !important;
 }
 
-/* Sharp-edged square cursor — rotates into a diamond on hover. Position is driven
-   by a direct CSS transform (set in JS on mousemove) and eased with a CSS
-   transition below, not a JS rAF loop — cheaper and smoother on the compositor. */
-.ev-cursor-square {
+/* Dot + ring cursor — small filled dot tracks instantly,
+   outer ring follows with a CSS-transition lag for a luxury trailing feel. */
+.ev-cursor-dot {
   position: fixed;
   top: 0;
   left: 0;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--black);
+  width: 5px;
+  height: 5px;
+  background: var(--black);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10000;
+  will-change: transform;
+  transition: transform 0.04s linear, width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+  transform: translate(-50%, -50%);
+}
+
+.ev-cursor-dot.is-hovering {
+  width: 3px;
+  height: 3px;
+  opacity: 0.4;
+}
+
+.ev-cursor-dot.is-clicking {
+  width: 8px;
+  height: 8px;
+}
+
+.ev-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--black);
+  border-radius: 50%;
   pointer-events: none;
   z-index: 9999;
   will-change: transform;
-  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease;
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s ease;
 }
 
-.ev-cursor-square.is-grown {
-  width: 34px;
-  height: 34px;
-  background: rgba(0, 0, 0, 0.06);
+.ev-cursor-ring.is-hovering {
+  width: 56px;
+  height: 56px;
+  opacity: 0.25;
 }
 
-.ev-cursor-square.is-clicking {
-  background: rgba(0, 0, 0, 0.18);
-  border-width: 2px;
+.ev-cursor-ring.is-clicking {
+  width: 28px;
+  height: 28px;
+  opacity: 0.8;
 }
 
 .hero-wordmark-light .letter {
@@ -227,47 +259,33 @@ canvas#hero-shader, canvas#pdp-three {
 }
 
 @media (pointer: coarse) {
-  .ev-cursor-square { display: none; }
+  .ev-cursor-dot, .ev-cursor-ring { display: none; }
 }
 
-/* ── Ghost Glide: massive EL drifts across the hero at near-invisible opacity ── */
-.ev-ghost-glide {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  transform: translateY(-52%);
-  font-family: 'Bodoni Moda', serif;
-  font-size: 52vw;
-  font-weight: 700;
-  color: var(--black);
-  opacity: 0.055;
-  white-space: nowrap;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  z-index: 2;
-  animation: ev-ghost-drift 28s linear infinite;
-  will-change: transform;
-}
-
-@keyframes ev-ghost-drift {
-  0%   { transform: translateY(-52%) translateX(-60vw); }
-  100% { transform: translateY(-52%) translateX(100vw); }
-}
-
-/* ── Spinning Brand Stamp ── */
+/* ── Spinning Brand Stamp — fixed, glides site-wide ── */
 .ev-brand-stamp {
-  position: absolute;
-  bottom: 44px;
-  right: 64px;
+  position: fixed;
+  bottom: 36px;
+  right: 36px;
   width: 148px;
   height: 148px;
   pointer-events: none;
-  z-index: 10;
-  display: none; /* hidden on mobile, shown on md+ */
+  z-index: 200;
+  display: none;
+  animation: ev-stamp-float 9s ease-in-out infinite;
+  will-change: transform;
 }
 
 @media (min-width: 768px) {
   .ev-brand-stamp { display: block; }
+}
+
+@keyframes ev-stamp-float {
+  0%   { transform: translateY(0px)   translateX(0px); }
+  25%  { transform: translateY(-14px) translateX(7px); }
+  50%  { transform: translateY(-8px)  translateX(-9px); }
+  75%  { transform: translateY(-20px) translateX(5px); }
+  100% { transform: translateY(0px)   translateX(0px); }
 }
 
 .ev-stamp-svg {
@@ -275,7 +293,7 @@ canvas#hero-shader, canvas#pdp-three {
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.72;
+  opacity: 0.68;
 }
 
 .ev-stamp-el {
