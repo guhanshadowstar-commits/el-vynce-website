@@ -138,7 +138,7 @@ canvas#hero-shader, canvas#pdp-three {
   letter-spacing: -0.02em;
   line-height: 0.9;
   color: var(--black);
-  opacity: 0.16;
+  opacity: 0.28;
   pointer-events: none;
 }
 
@@ -195,7 +195,7 @@ canvas#hero-shader, canvas#pdp-three {
 }
 
 @keyframes ev-letter-in {
-  to { opacity: 0.16; transform: translateY(0); }
+  to { opacity: 0.28; transform: translateY(0); }
 }
 
 [data-reveal] {
@@ -228,4 +228,100 @@ canvas#hero-shader, canvas#pdp-three {
 
 @media (pointer: coarse) {
   .ev-cursor-square { display: none; }
+}
+
+/* ── Ghost Glide: massive EL drifts across the hero at near-invisible opacity ── */
+.ev-ghost-glide {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-52%);
+  font-family: 'Bodoni Moda', serif;
+  font-size: 52vw;
+  font-weight: 700;
+  color: var(--black);
+  opacity: 0.055;
+  white-space: nowrap;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  z-index: 2;
+  animation: ev-ghost-drift 28s linear infinite;
+  will-change: transform;
+}
+
+@keyframes ev-ghost-drift {
+  0%   { transform: translateY(-52%) translateX(-60vw); }
+  100% { transform: translateY(-52%) translateX(100vw); }
+}
+
+/* ── Spinning Brand Stamp ── */
+.ev-brand-stamp {
+  position: absolute;
+  bottom: 44px;
+  right: 64px;
+  width: 148px;
+  height: 148px;
+  pointer-events: none;
+  z-index: 10;
+  display: none; /* hidden on mobile, shown on md+ */
+}
+
+@media (min-width: 768px) {
+  .ev-brand-stamp { display: block; }
+}
+
+.ev-stamp-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.72;
+}
+
+.ev-stamp-el {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%);
+  font-family: 'Bodoni Moda', serif;
+  font-size: 52px;
+  font-weight: 700;
+  color: var(--black);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Panther Loading Overlay ── */
+.ev-panther-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.ev-panther-loader.is-active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.ev-panther-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  animation: ev-panther-breathe 2s ease-in-out infinite;
+}
+
+@keyframes ev-panther-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%       { transform: scale(1.06); opacity: 1;    }
 }

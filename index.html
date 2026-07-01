@@ -65,15 +65,39 @@
 
 <!-- ===== Hero ===== -->
 <header class="relative w-full h-screen min-h-[640px] overflow-hidden bg-white">
-  <!-- Abstract black wireframe humanoid silhouette (three.js) — replaces real-human photography per client request -->
+  <!-- Abstract black wireframe humanoid silhouette (three.js) -->
   <div id="hero-silhouette" class="absolute inset-0 w-full h-full"></div>
   <div class="absolute inset-0 bg-black/5 pointer-events-none"></div>
+
+  <!-- Ghost Glide: EL monogram drifts across the scene at near-invisible opacity -->
+  <div class="ev-ghost-glide pointer-events-none select-none" aria-hidden="true">EL</div>
+
   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
     <h1 class="hero-wordmark-light text-center text-[18vw] md:text-[14vw] tracking-tight select-none">EL VYNCE</h1>
   </div>
   <div class="absolute bottom-0 left-0 w-full px-margin-mobile md:px-margin-desktop pb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6 max-w-container-max mx-auto">
     <p class="font-body-lg text-body-lg text-primary max-w-md">Made-to-order Indian clothing, cut for stillness. Every piece begins after you place your order.</p>
     <a href="product-listing.html" data-magnetic class="bg-primary text-on-primary px-8 py-4 label-sm w-fit hover:opacity-90 transition-opacity">Shop the Collection</a>
+  </div>
+
+  <!-- Spinning brand stamp — EL centre, rotating tagline ring (DPM-style) -->
+  <div class="ev-brand-stamp" aria-hidden="true">
+    <svg class="ev-stamp-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <path id="ev-ring-path" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0"/>
+      </defs>
+      <!-- rotating text ring -->
+      <g>
+        <text font-family="Inter,sans-serif" font-size="9.2" font-weight="600" fill="#000000" letter-spacing="1.8">
+          <textPath href="#ev-ring-path">VYNCE • THE ONLY MINIMALIST BRAND YOU NEED • VYNCE • THE ONLY MINIMALIST BRAND YOU NEED •</textPath>
+        </text>
+        <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="22s" repeatCount="indefinite"/>
+      </g>
+      <!-- static thin ring border -->
+      <circle cx="100" cy="100" r="72" fill="none" stroke="#000000" stroke-width="0.5" opacity="0.18"/>
+    </svg>
+    <!-- centre EL — stationary -->
+    <span class="ev-stamp-el">EL</span>
   </div>
 
   <!-- Glassmorphic AI-styled search bar — client-side demo: Enter routes to search-results.html?q= -->
@@ -101,6 +125,11 @@
     <div id="featured-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
   </section>
 </main>
+
+<!-- ===== Panther Loading Overlay (global) ===== -->
+<div id="ev-panther-loader" class="ev-panther-loader" aria-hidden="true">
+  <img src="images/panther.svg" class="ev-panther-img" alt="" />
+</div>
 
 <!-- ===== Cart Drawer (global) ===== -->
 <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">

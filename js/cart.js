@@ -121,16 +121,26 @@ function evRenderCart() {
   });
 }
 
+function evPantherFlash(ms = 600) {
+  const loader = document.getElementById("ev-panther-loader");
+  if (!loader) return;
+  loader.classList.add("is-active");
+  setTimeout(() => loader.classList.remove("is-active"), ms);
+}
+
 function evOpenCart() {
   const overlay = document.getElementById("cart-overlay");
   const drawer = document.getElementById("cart-drawer");
   if (!overlay || !drawer) return;
-  overlay.classList.remove("pointer-events-none");
-  overlay.classList.remove("opacity-0");
-  overlay.classList.add("opacity-100");
-  drawer.classList.remove("translate-x-full");
-  drawer.classList.add("translate-x-0");
-  document.body.style.overflow = "hidden";
+  evPantherFlash(500);
+  setTimeout(() => {
+    overlay.classList.remove("pointer-events-none");
+    overlay.classList.remove("opacity-0");
+    overlay.classList.add("opacity-100");
+    drawer.classList.remove("translate-x-full");
+    drawer.classList.add("translate-x-0");
+    document.body.style.overflow = "hidden";
+  }, 320);
 }
 
 function evCloseCart() {
