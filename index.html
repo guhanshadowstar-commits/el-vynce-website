@@ -225,6 +225,25 @@
     `).join("");
   }
   document.addEventListener("DOMContentLoaded", evRenderFeatured);
+
+  // Panther intro — black screen with breathing panther, once per browser session.
+  (function () {
+    const loader = document.getElementById("ev-panther-loader");
+    if (!loader) return;
+    if (sessionStorage.getItem("ev-intro-seen")) {
+      loader.style.display = "none";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    setTimeout(() => {
+      loader.classList.add("is-hidden");
+      document.body.style.overflow = "";
+      setTimeout(() => {
+        loader.style.display = "none";
+        sessionStorage.setItem("ev-intro-seen", "1");
+      }, 700);
+    }, 1800);
+  })();
 </script>
 </body>
 </html>
