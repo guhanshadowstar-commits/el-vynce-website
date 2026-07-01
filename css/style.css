@@ -301,19 +301,16 @@ canvas#hero-shader, canvas#pdp-three {
   opacity: 0.68;
 }
 
-.ev-stamp-el {
+.ev-stamp-logo {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -52%);
-  font-family: 'Bodoni Moda', serif;
-  font-size: 52px;
-  font-weight: 700;
-  color: var(--black);
-  line-height: 1;
-  letter-spacing: -0.03em;
+  transform: translate(-50%, -50%);
+  width: 66px;
+  height: auto;
   pointer-events: none;
   user-select: none;
+  display: block;
 }
 
 /* ── Panther Page Intro ── */
