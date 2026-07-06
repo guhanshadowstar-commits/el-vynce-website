@@ -43,7 +43,12 @@ const textureLoader = new THREE.TextureLoader();
 // hours + minutes (+ seconds, for smooth sub-minute motion) — NOT a fake sped
 // up loop. Someone loading the hero at 17:55 sees the sun already low and the
 // sky already warming toward sunset, and it keeps drifting in real time.
+// Optional preview override: ?evhour=18.2 pins the scene to any hour (0-24)
+// so day/sunset/night states can be checked without waiting for the clock.
+const DEBUG_HOUR = parseFloat(new URLSearchParams(window.location.search).get("evhour"));
+
 function getLocalDayFraction() {
+  if (Number.isFinite(DEBUG_HOUR)) return ((DEBUG_HOUR % 24) + 24) % 24;
   const now = new Date();
   return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
 }
@@ -365,21 +370,21 @@ function initHeroSilhouette() {
   const starGeo = new THREE.BufferGeometry();
   const starPositions = new Float32Array(STAR_COUNT * 3);
   for (let i = 0; i < STAR_COUNT; i++) {
-    const x = (Math.random() - 0.5) * 100;
-    const y = 6 + Math.random() * 30;
-    const z = -25 - Math.random() * 15;
+    const x = (Math.random() - 0.5) * 70;
+    const y = 2.5 + Math.random() * 8; // keep inside the visible sky band
+    const z = -24 - Math.random() * 10;
     starPositions.set([x, y, z], i * 3);
   }
   starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
-  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0, depthWrite: false });
+  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, transparent: true, opacity: 0, depthWrite: false });
   const stars = new THREE.Points(starGeo, starMat);
   scene.add(stars);
 
   // ---- Sun disc with soft glow halo ----
-  const sunGeo = new THREE.CircleGeometry(1.3, 40);
+  const sunGeo = new THREE.CircleGeometry(1.7, 40);
   const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff1c2, transparent: true, opacity: 1, depthWrite: false, fog: false });
   const sunDisc = new THREE.Mesh(sunGeo, sunMat);
-  const sunHaloGeo = new THREE.CircleGeometry(3.2, 40);
+  const sunHaloGeo = new THREE.CircleGeometry(3.8, 40);
   const sunHaloMat = new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.35, depthWrite: false, fog: false });
   const sunHalo = new THREE.Mesh(sunHaloGeo, sunHaloMat);
   sunHalo.position.z = -0.05;
@@ -387,10 +392,10 @@ function initHeroSilhouette() {
   scene.add(sunDisc);
 
   // ---- Moon disc with cool glow halo ----
-  const moonGeo = new THREE.CircleGeometry(1.0, 40);
+  const moonGeo = new THREE.CircleGeometry(1.35, 40);
   const moonMat = new THREE.MeshBasicMaterial({ color: 0xf3f6ff, transparent: true, opacity: 1, depthWrite: false, fog: false });
   const moonDisc = new THREE.Mesh(moonGeo, moonMat);
-  const moonHaloGeo = new THREE.CircleGeometry(2.4, 40);
+  const moonHaloGeo = new THREE.CircleGeometry(3.0, 40);
   const moonHaloMat = new THREE.MeshBasicMaterial({ color: 0xaebeff, transparent: true, opacity: 0.3, depthWrite: false, fog: false });
   const moonHalo = new THREE.Mesh(moonHaloGeo, moonHaloMat);
   moonHalo.position.z = -0.05;
@@ -469,10 +474,14 @@ function initHeroSilhouette() {
   const clock = new THREE.Clock();
   let usingGLTFHumans = false;
   let baseSoldierGLTF = null;
+  // Set when the GLB loads: scales the raw model to ~1.75 world-units tall and
+  // sizes bone-space attachments, whatever unit system the file was authored in.
+  let soldierWorldScale = 1;
+  let soldierUnitsPerMeter = 1;
 
   // Neutral/darkened uniform materials so the tee plane on the chest stays the
   // visual focal point rather than competing with the model's own camo/gear.
-  const NEUTRAL_UNIFORM_COLOR = new THREE.Color(0x232323);
+  const NEUTRAL_UNIFORM_COLOR = new THREE.Color(0x4a4d52);
 
   function neutralizeSoldierMaterials(root) {
     root.traverse((obj) => {
@@ -480,8 +489,9 @@ function initHeroSilhouette() {
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       mats.forEach((m) => {
         if (!m) return;
-        // Keep the map (fabric texture detail) but recolor toward neutral
-        // charcoal and flatten shininess so it doesn't read as camo/military.
+        // Strip the camo texture entirely — flat neutral gray reads as a
+        // fashion mannequin rather than a soldier, and lets the tee pop.
+        if ("map" in m) m.map = null;
         if ("color" in m) m.color.copy(NEUTRAL_UNIFORM_COLOR);
         if ("roughness" in m) m.roughness = 0.9;
         if ("metalness" in m) m.metalness = 0.0;
@@ -533,23 +543,30 @@ function initHeroSilhouette() {
 
     if (chestBone) {
       // A slightly curved plane (subtle bend) so the tee reads naturally
-      // against the torso rather than as a flat sticker.
-      const shirtGeo = new THREE.PlaneGeometry(38, 46, 6, 6);
+      // against the torso rather than as a flat sticker. Dimensions are
+      // authored in meters, converted into bone-local units by measuring the
+      // chest bone's actual world scale (rigs often bake cm→m node scaling,
+      // so bone-local units can't be assumed).
+      cloned.updateMatrixWorld(true);
+      const boneScale = chestBone.getWorldScale(new THREE.Vector3()).y || 1;
+      const u = 1 / boneScale;
+      const teeW = 0.42 * u;
+      const teeH = 0.5 * u;
+      if (window.__EV_DEBUG) window.__EV_DEBUG.boneScale = boneScale;
+      const shirtGeo = new THREE.PlaneGeometry(teeW, teeH, 6, 6);
       const posAttr = shirtGeo.attributes.position;
       for (let i = 0; i < posAttr.count; i++) {
         const x = posAttr.getX(i);
-        posAttr.setZ(i, Math.cos((x / 38) * Math.PI * 0.5) * 3.2 - 3.2);
+        posAttr.setZ(i, Math.cos((x / teeW) * Math.PI * 0.5) * 0.03 * u - 0.03 * u);
       }
       shirtGeo.computeVertexNormals();
       const shirtMat = new THREE.MeshBasicMaterial({
         color: 0x555555, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       });
       const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
-      // Soldier.glb is authored in centimeters-ish scale (the whole scene is
-      // scaled down elsewhere); position empirically sits the plane on the
-      // chest facing forward (+Z in bone-local space for this rig).
-      shirtMesh.position.set(0, 14, 6);
-      shirtMesh.rotation.y = Math.PI;
+      // Sits the plane on the chest facing forward (+Z in bone-local space).
+      // Spine2's joint is at the sternum, so the plane hangs slightly below it.
+      shirtMesh.position.set(0, -0.08 * u, 0.14 * u);
       chestBone.add(shirtMesh);
 
       textureLoader.load(
@@ -588,7 +605,7 @@ function initHeroSilhouette() {
       pauseUntil: 0,
       pausedAtPathT: 0,
     };
-    fig.group.scale.setScalar(npc.scale * (fig.isStylized ? 1 : 0.011));
+    fig.group.scale.setScalar(npc.scale * (fig.isStylized ? 1 : soldierWorldScale));
     npcs.push(npc);
     return npc;
   }
@@ -608,6 +625,11 @@ function initHeroSilhouette() {
     (gltf) => {
       baseSoldierGLTF = gltf;
       usingGLTFHumans = true;
+      // Box3 on a SkinnedMesh returns the bind-pose geometry bounds, not the
+      // posed height, so it can't be trusted for sizing. Soldier.glb stands
+      // ~1.76 world units tall at scale 1 (verified visually), so scale ≈ 1.
+      soldierWorldScale = 1.75 / 1.76;
+      window.__EV_DEBUG = { soldierWorldScale };
       for (let i = 0; i < FIGURE_COUNT; i++) {
         const product = SHIRT_PRODUCTS[i % SHIRT_PRODUCTS.length];
         const fig = buildGLTFHuman(product.image);
@@ -714,14 +736,16 @@ function initHeroSilhouette() {
     // moon arcs oppositely through the night. Arc angle maps each body's altitude
     // window to a 0..PI sweep across the visible sky.
     const sunArc = THREE.MathUtils.clamp((hour - 6) / (18.5 - 6), 0, 1) * Math.PI;
-    sunDisc.position.set(Math.cos(sunArc) * -18, 2 + Math.sin(sunArc) * 15, -22);
+    // Arc peak stays inside the camera frustum (45° FOV, slight downward tilt
+    // → sky is only visible up to y≈9 at z=-22; higher and the sun vanishes).
+    sunDisc.position.set(Math.cos(sunArc) * -15, 1.5 + Math.sin(sunArc) * 6.5, -22);
     sunDisc.visible = sunAlt > 0.001;
     sunDisc.material.opacity = Math.min(1, sunAlt * 2.2);
     sunHaloMat.opacity = 0.3 + sunAlt * 0.25;
 
     let moonHour = hour < 6 ? hour + 24 : hour;
     const moonArc = THREE.MathUtils.clamp((moonHour - 18.5) / (30 - 18.5), 0, 1) * Math.PI;
-    moonDisc.position.set(Math.cos(moonArc) * -16, 2 + Math.sin(moonArc) * 14, -22);
+    moonDisc.position.set(Math.cos(moonArc) * -15, 1.5 + Math.sin(moonArc) * 6.5, -22);
     moonDisc.visible = moonAlt > 0.001;
     moonDisc.material.opacity = Math.min(1, moonAlt * 2.2);
     moonHaloMat.opacity = 0.22 + moonAlt * 0.2;

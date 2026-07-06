@@ -243,6 +243,9 @@ header.is-night .hero-wordmark-light,
 header.is-night .hero-wordmark-light .letter {
   color: var(--white);
 }
+header.is-night .hero-wordmark-light {
+  text-shadow: 0 0 28px rgba(255, 255, 255, 0.35);
+}
 
 header .font-body-lg.text-primary {
   transition: color 1.6s ease;
