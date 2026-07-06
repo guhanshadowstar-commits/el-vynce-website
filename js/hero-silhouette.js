@@ -564,9 +564,11 @@ function initHeroSilhouette() {
         color: 0x555555, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       });
       const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
-      // Sits the plane on the chest facing forward (+Z in bone-local space).
-      // Spine2's joint is at the sternum, so the plane hangs slightly below it.
-      shirtMesh.position.set(0, -0.08 * u, 0.14 * u);
+      // The model faces -Z, so the chest is on the bone's -Z side; the plane
+      // is rotated to face outward. Spine2's joint is at the sternum, so the
+      // plane hangs slightly below it.
+      shirtMesh.position.set(0, -0.08 * u, -0.14 * u);
+      shirtMesh.rotation.y = Math.PI;
       chestBone.add(shirtMesh);
 
       textureLoader.load(
@@ -809,7 +811,9 @@ function initHeroSilhouette() {
     const nextPathT = pathT + 0.05;
     const nx = npc.centerX + Math.cos(nextPathT) * npc.pathRadiusX;
     const nz = npc.centerZ + Math.sin(nextPathT * 1.3) * npc.pathRadiusZ;
-    const heading = Math.atan2(nx - x, nz - z);
+    // Soldier.glb is authored facing -Z, so flip the heading by PI to make the
+    // body face the direction of travel (otherwise the crowd moonwalks).
+    const heading = Math.atan2(nx - x, nz - z) + (npc.isStylized ? 0 : Math.PI);
 
     npc.group.position.set(x, 0, z);
     if (!npc.paused) npc.group.rotation.y = heading;
