@@ -564,10 +564,10 @@ function initHeroSilhouette() {
         color: 0x555555, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       });
       const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
-      // The model faces -Z, so the chest is on the bone's -Z side; the plane
-      // is rotated to face outward. Spine2's joint is at the sternum, so the
-      // plane hangs slightly below it.
-      shirtMesh.position.set(0, -0.08 * u, -0.14 * u);
+      // Bone-local axes don't match model axes on this rig: the chest is on
+      // the bone's +Z side (verified by freezing a figure and inspecting).
+      // Spine2's joint is at the sternum, so the plane hangs slightly below it.
+      shirtMesh.position.set(0, -0.08 * u, 0.14 * u);
       shirtMesh.rotation.y = Math.PI;
       chestBone.add(shirtMesh);
 
@@ -609,6 +609,7 @@ function initHeroSilhouette() {
     };
     fig.group.scale.setScalar(npc.scale * (fig.isStylized ? 1 : soldierWorldScale));
     npcs.push(npc);
+    if (window.__EV_DEBUG) window.__EV_DEBUG.npcs = npcs;
     return npc;
   }
 
