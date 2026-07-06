@@ -230,6 +230,35 @@ canvas#hero-shader, canvas#pdp-three {
   to { opacity: 0.28; transform: translateY(0); }
 }
 
+/* ---- Hero day/night cycle (js/hero-silhouette.js toggles .is-night on <header>) ----
+   Only `color`/`background-color`/`border-color` are touched here — never `opacity` —
+   so these rules never fight the wordmark's letter-entrance animation above, which
+   owns opacity and lands each letter at 0.28. Everything reverts cleanly because
+   these are plain class-gated transitions, not one-shot animations. */
+.hero-wordmark-light,
+.hero-wordmark-light .letter {
+  transition: color 1.6s ease;
+}
+header.is-night .hero-wordmark-light,
+header.is-night .hero-wordmark-light .letter {
+  color: var(--white);
+}
+
+header .font-body-lg.text-primary {
+  transition: color 1.6s ease;
+}
+header.is-night .font-body-lg.text-primary {
+  color: var(--white);
+}
+
+header a.bg-primary.text-on-primary {
+  transition: background-color 1.6s ease, color 1.6s ease;
+}
+header.is-night a.bg-primary.text-on-primary {
+  background-color: var(--white);
+  color: var(--black);
+}
+
 [data-reveal] {
   opacity: 0;
   transform: translateY(24px);
