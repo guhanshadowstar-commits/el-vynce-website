@@ -1,12 +1,13 @@
 /* EL VYNCE — cinematic full-color city hero, real-time day/night cycle.
    A downtown street scene (colored sky, glowing sun/moon, muted-color buildings,
-   warm/cool directional light) populated by real rigged human figures (three.js
-   Soldier.glb, walking on the built-in "Walk" clip) each wearing a real product
-   tee texture-mapped onto a plane parented to the chest bone. Falls back to
-   stylized procedural humans if the GLB fails to load, so the hero never breaks.
-   Time of day is driven by the visitor's actual local clock, not a fake loop.
-   Interactive: click a figure to jump to its product, cursor parallax,
-   scroll-linked camera pull-back. ES module (three.js r0.160). No build step. */
+   warm/cool directional light) populated by real Mixamo human characters
+   (models/people/*.glb) walking the street, each with a product tee design
+   composited into their shirt texture, plus a hip-hop street performer and
+   rare trip/sing street-life moments. Falls back to stylized procedural
+   figures if the GLBs fail to load, so the hero never breaks. Time of day is
+   driven by the visitor's actual local clock, not a fake loop. Interactive:
+   click a figure to jump to its product, cursor parallax, scroll-linked
+   camera pull-back. ES module (three.js r0.160). No build step. */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -25,7 +26,6 @@ const SHIRT_PRODUCTS = [
   { image: "images/products/style-pays-off-front.jpg", id: "ev-004" },
 ];
 
-const SOLDIER_GLB_URL = "models/Soldier.glb";
 
 const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for perf.
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
@@ -473,127 +473,177 @@ function initHeroSilhouette() {
   const npcs = [];
   const clock = new THREE.Clock();
   let usingGLTFHumans = false;
-  let baseSoldierGLTF = null;
-  // Set when the GLB loads: scales the raw model to ~1.75 world-units tall and
-  // sizes bone-space attachments, whatever unit system the file was authored in.
-  let soldierWorldScale = 1;
-  let soldierUnitsPerMeter = 1;
+  window.__EV_DEBUG = {};
 
-  // Neutral/darkened uniform materials so the tee plane on the chest stays the
-  // visual focal point rather than competing with the model's own camo/gear.
-  const NEUTRAL_UNIFORM_COLOR = new THREE.Color(0x4a4d52);
+  // ---- Real human characters (Mixamo, provided by the founder) ----
+  // Each rig uses the same Mixamo skeleton but with a numbered name prefix,
+  // so any clip can drive any character after prefix remapping.
+  // tee: where the product design gets composited into the shirt's texture
+  // (pixel coords in 1024-texture space, found by UV grid probing).
+  const PEOPLE = {
+    remy: {
+      url: "models/people/remy.glb",
+      prefix: "mixamorig",
+      shirtMesh: "Tops",
+      tee: { x: 150, y: 310, w: 210, h: 300, rot: 0, whiten: true },
+      height: 1.78,
+    },
+    woman: {
+      url: "models/people/woman.glb",
+      prefix: "mixamorig2",
+      shirtMesh: "Ch22_Shirt",
+      tee: { x: 285, y: 135, w: 180, h: 115, rot: Math.PI, whiten: false },
+      height: 1.65,
+    },
+    dancer: {
+      url: "models/people/dancer.glb",
+      prefix: "mixamorig9",
+      height: 1.75,
+    },
+  };
+  const ANIM_URLS = {
+    trip: "models/people/anim-tripping.glb",
+    sing: "models/people/anim-singing.glb",
+  };
+  const ANIM_SOURCE_PREFIX = "mixamorig"; // donor clips use the base prefix
 
-  function neutralizeSoldierMaterials(root) {
-    root.traverse((obj) => {
-      if (!obj.isMesh) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      mats.forEach((m) => {
-        if (!m) return;
-        // Strip the camo texture entirely — flat neutral gray reads as a
-        // fashion mannequin rather than a soldier, and lets the tee pop.
-        if ("map" in m) m.map = null;
-        if ("color" in m) m.color.copy(NEUTRAL_UNIFORM_COLOR);
-        if ("roughness" in m) m.roughness = 0.9;
-        if ("metalness" in m) m.metalness = 0.0;
-        m.needsUpdate = true;
-      });
-      obj.castShadow = false;
-      obj.receiveShadow = false;
+  // Remap a clip's tracks from one rig prefix to another, dropping tracks
+  // whose target bone doesn't exist on the destination rig.
+  function retargetClip(clip, fromPrefix, toPrefix, targetRoot) {
+    const names = new Set();
+    targetRoot.traverse((o) => names.add(o.name));
+    const tracks = [];
+    clip.tracks.forEach((tr) => {
+      const dot = tr.name.lastIndexOf(".");
+      const node = tr.name.slice(0, dot);
+      const prop = tr.name.slice(dot);
+      if (!node.startsWith(fromPrefix)) return;
+      const newNode = toPrefix + node.slice(fromPrefix.length);
+      if (!names.has(newNode)) return;
+      const t2 = tr.clone();
+      t2.name = newNode + prop;
+      tracks.push(t2);
     });
+    return new THREE.AnimationClip(clip.name, clip.duration, tracks);
   }
 
-  // Find a bone by fuzzy name match (case-insensitive substring) — used to
-  // locate a chest/spine bone to parent the tee plane to. Soldier.glb's rig
-  // uses "mixamorig:SpineN" naming (colon-delimited, not "mixamorigSpineN").
+  // Pin the hips' X/Z to the first keyframe so clips play "in place" — path
+  // code owns world movement; root motion in the clip would cause sliding.
+  function stripRootMotion(clip) {
+    clip.tracks.forEach((tr) => {
+      if (!/\.position$/.test(tr.name) || !/hips/i.test(tr.name)) return;
+      const v = tr.values;
+      const x0 = v[0], z0 = v[2];
+      for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; }
+    });
+    return clip;
+  }
+
   function findBoneByName(root, needle) {
     let found = null;
     root.traverse((obj) => {
       if (found) return;
-      if (obj.isBone && obj.name.toLowerCase().includes(needle.toLowerCase())) {
-        found = obj;
-      }
+      if (obj.isBone && obj.name.toLowerCase().includes(needle.toLowerCase())) found = obj;
     });
     return found;
   }
 
-  function buildGLTFHuman(shirtImageUrl) {
-    const cloned = skeletonClone(baseSoldierGLTF.scene);
-    neutralizeSoldierMaterials(cloned);
-
-    const mixer = new THREE.AnimationMixer(cloned);
-    const walkClip = THREE.AnimationClip.findByName(baseSoldierGLTF.animations, "Walk")
-      || baseSoldierGLTF.animations[0];
-    const action = walkClip ? mixer.clipAction(walkClip) : null;
-    if (action) {
-      action.play();
-      // Randomize phase/speed slightly per figure so a crowd of clones doesn't
-      // move in obvious lockstep.
-      action.time = Math.random() * (walkClip.duration || 1);
-      mixer.update(0);
+  // Composite a product tee design into a character's shirt texture.
+  function makeTeeTexture(baseImage, teeImage, spec) {
+    const size = (baseImage && baseImage.width) || 1024;
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = size;
+    const g = c.getContext("2d");
+    if (spec.whiten) {
+      // Turn the whole garment white so it matches the product tees.
+      g.fillStyle = "#f2f1ee";
+      g.fillRect(0, 0, size, size);
+    } else if (baseImage) {
+      g.drawImage(baseImage, 0, 0, size, size);
     }
-
-    // Chest bone: prefer Spine2 (upper chest), fall back to Spine1, then Spine.
-    const chestBone =
-      findBoneByName(cloned, "spine2") ||
-      findBoneByName(cloned, "spine1") ||
-      findBoneByName(cloned, "spine");
-
-    const group = new THREE.Group();
-    group.add(cloned);
-
-    if (chestBone) {
-      // A slightly curved plane (subtle bend) so the tee reads naturally
-      // against the torso rather than as a flat sticker. Dimensions are
-      // authored in meters, converted into bone-local units by measuring the
-      // chest bone's actual world scale (rigs often bake cm→m node scaling,
-      // so bone-local units can't be assumed).
-      cloned.updateMatrixWorld(true);
-      const boneScale = chestBone.getWorldScale(new THREE.Vector3()).y || 1;
-      const u = 1 / boneScale;
-      const teeW = 0.42 * u;
-      const teeH = 0.5 * u;
-      if (window.__EV_DEBUG) window.__EV_DEBUG.boneScale = boneScale;
-      const shirtGeo = new THREE.PlaneGeometry(teeW, teeH, 6, 6);
-      const posAttr = shirtGeo.attributes.position;
-      for (let i = 0; i < posAttr.count; i++) {
-        const x = posAttr.getX(i);
-        posAttr.setZ(i, Math.cos((x / teeW) * Math.PI * 0.5) * 0.03 * u - 0.03 * u);
-      }
-      shirtGeo.computeVertexNormals();
-      const shirtMat = new THREE.MeshBasicMaterial({
-        color: 0x555555, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      });
-      const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
-      // Bone-local axes don't match model axes on this rig: the chest is on
-      // the bone's +Z side (verified by freezing a figure and inspecting).
-      // Spine2's joint is at the sternum, so the plane hangs slightly below it.
-      shirtMesh.position.set(0, -0.08 * u, 0.14 * u);
-      shirtMesh.rotation.y = Math.PI;
-      chestBone.add(shirtMesh);
-
-      textureLoader.load(
-        shirtImageUrl,
-        (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          shirtMat.map = tex;
-          shirtMat.color.set(0xffffff);
-          shirtMat.needsUpdate = true;
-        },
-        undefined,
-        () => {
-          console.warn("EL VYNCE hero: tee texture failed to load (GLTF human), using gray fallback:", shirtImageUrl);
-        }
-      );
+    if (teeImage) {
+      const k = size / 1024; // spec coords are in 1024-space
+      const rw = spec.w * k, rh = spec.h * k;
+      // Zoom into the print area of the product photo (the graphic sits in
+      // the middle of the flat-lay shot) so the design reads clearly on the
+      // chest instead of shrinking the whole tee photo into the rect.
+      const sx = teeImage.width * 0.24, sy = teeImage.height * 0.2;
+      const sw = teeImage.width * 0.52, sh = teeImage.height * 0.58;
+      const s = Math.min(rw / sw, rh / sh);
+      const dw = sw * s, dh = sh * s;
+      g.save();
+      g.translate((spec.x + spec.w / 2) * k, (spec.y + spec.h / 2) * k);
+      if (spec.rot) g.rotate(spec.rot);
+      g.drawImage(teeImage, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+      g.restore();
     }
-
-    return { group, mixer, isStylized: false };
+    const t = new THREE.CanvasTexture(c);
+    t.flipY = false; // match glTF texture convention
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
   }
 
-  function spawnNpcCommon(fig, index) {
+  // Ground + size a rig: measure toe and head-top bones in the loaded pose to
+  // normalize height and plant feet at y=0. (Box3 on skinned meshes returns
+  // bind-pose geometry bounds, so bones are the only reliable ruler.)
+  function fitHuman(root, group, desiredHeight) {
+    root.updateMatrixWorld(true);
+    const toe = findBoneByName(root, "toebase") || findBoneByName(root, "foot");
+    const headTop = findBoneByName(root, "headtop") || findBoneByName(root, "head");
+    const toeY = toe ? toe.getWorldPosition(new THREE.Vector3()).y : 0;
+    const headY = headTop ? headTop.getWorldPosition(new THREE.Vector3()).y : 1.7;
+    const rigHeight = Math.max(0.01, headY - toeY);
+    const s = desiredHeight / rigHeight;
+    group.scale.setScalar(s);
+    // Feet flat on pavement: toe bone sits ~2cm above the sole.
+    root.position.y = -(toeY - 0.02 * rigHeight) ;
+    return s;
+  }
+
+  const gltfLoader = new GLTFLoader();
+  const imageLoader = new THREE.ImageLoader();
+  function loadGLB(url) {
+    return new Promise((resolve, reject) => gltfLoader.load(url, resolve, undefined, reject));
+  }
+  function loadImage(url) {
+    return new Promise((resolve) => imageLoader.load(url, resolve, undefined, () => resolve(null)));
+  }
+
+  function buildHuman(spec, base, walkClip, teeImage, baseShirtImage) {
+    const cloned = skeletonClone(base.scene);
+    const group = new THREE.Group();
+    group.add(cloned);
+    fitHuman(cloned, group, spec.height);
+
+    // Swap the shirt texture for one carrying the product design.
+    if (spec.shirtMesh && spec.tee) {
+      cloned.traverse((o) => {
+        if (o.isMesh && o.name === spec.shirtMesh) {
+          const m = (Array.isArray(o.material) ? o.material[0] : o.material).clone();
+          m.map = makeTeeTexture(baseShirtImage, teeImage, spec.tee);
+          m.needsUpdate = true;
+          o.material = m;
+        }
+      });
+    }
+
+    const mixer = new THREE.AnimationMixer(cloned);
+    const walkAction = walkClip ? mixer.clipAction(walkClip) : null;
+    if (walkAction) {
+      walkAction.play();
+      walkAction.time = Math.random() * (walkClip.duration || 1);
+      mixer.update(0);
+    }
+    return { group, mixer, cloned, walkAction, isStylized: false };
+  }
+
+  function spawnNpcCommon(fig, index, opts) {
     const product = SHIRT_PRODUCTS[index % SHIRT_PRODUCTS.length];
     scene.add(fig.group);
     const npc = {
       ...fig,
+      ...opts,
       productId: product.id,
       pathRadiusX: 1.6 + Math.random() * 1.8,
       pathRadiusZ: 1.0 + Math.random() * 1.2,
@@ -602,14 +652,15 @@ function initHeroSilhouette() {
       centerX: (index - (FIGURE_COUNT - 1) / 2) * 1.6 + (Math.random() - 0.5) * 0.6,
       centerZ: -1 + (Math.random() - 0.5) * 1.5,
       walkPhase: Math.random() * Math.PI * 2,
-      scale: 0.85 + Math.random() * 0.3,
+      scale: 1,
       paused: false,
       pauseUntil: 0,
       pausedAtPathT: 0,
+      eventUntil: 0,
+      eventCooldownUntil: 8 + Math.random() * 20,
     };
-    fig.group.scale.setScalar(npc.scale * (fig.isStylized ? 1 : soldierWorldScale));
     npcs.push(npc);
-    if (window.__EV_DEBUG) window.__EV_DEBUG.npcs = npcs;
+    window.__EV_DEBUG.npcs = npcs;
     return npc;
   }
 
@@ -618,33 +669,109 @@ function initHeroSilhouette() {
     for (let i = 0; i < FIGURE_COUNT; i++) {
       const product = SHIRT_PRODUCTS[i % SHIRT_PRODUCTS.length];
       const fig = createStylizedFigure(product.image);
-      spawnNpcCommon(fig, i);
+      fig.group.scale.setScalar(0.85 + Math.random() * 0.3);
+      spawnNpcCommon(fig, i, { isStylized: true });
     }
   }
 
-  const gltfLoader = new GLTFLoader();
-  gltfLoader.load(
-    SOLDIER_GLB_URL,
-    (gltf) => {
-      baseSoldierGLTF = gltf;
-      usingGLTFHumans = true;
-      // Box3 on a SkinnedMesh returns the bind-pose geometry bounds, not the
-      // posed height, so it can't be trusted for sizing. Soldier.glb stands
-      // ~1.76 world units tall at scale 1 (verified visually), so scale ≈ 1.
-      soldierWorldScale = 1.75 / 1.76;
-      window.__EV_DEBUG = { soldierWorldScale };
-      for (let i = 0; i < FIGURE_COUNT; i++) {
-        const product = SHIRT_PRODUCTS[i % SHIRT_PRODUCTS.length];
-        const fig = buildGLTFHuman(product.image);
-        spawnNpcCommon(fig, i);
-      }
-    },
-    undefined,
-    (err) => {
-      console.warn("EL VYNCE hero: Soldier.glb failed to load, using stylized fallback figures:", err);
-      spawnStylizedFallbackCrowd();
+  // Occasional "street life" clips: a walker may briefly trip, or stop and
+  // sing. One-shot, then back to walking. Chosen rarely so it stays charming.
+  let eventClips = {}; // per-prefix retargeted { trip, sing }
+  function maybeStartEvent(npc, t) {
+    if (npc.static || npc.isStylized || !npc.walkAction) return;
+    if (t < npc.eventCooldownUntil || npc.eventUntil > t) return;
+    if (Math.random() > 0.003) return; // ~once per ~5.5min per figure at 60fps
+    const lib = eventClips[npc.rigPrefix];
+    if (!lib) return;
+    const clip = Math.random() < 0.5 ? lib.trip : lib.sing;
+    if (!clip) return;
+    const action = npc.mixer.clipAction(clip);
+    action.reset();
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = false;
+    npc.walkAction.crossFadeTo(action, 0.25, false);
+    action.play();
+    npc.eventUntil = t + clip.duration - 0.25;
+    npc.eventAction = action;
+    npc.eventCooldownUntil = t + clip.duration + 30 + Math.random() * 60;
+    // Freeze the walker's path while the event plays out.
+    npc.paused = true;
+    npc.pausedAtPathT = t * npc.pathSpeed + npc.pathPhase;
+    npc.pauseUntil = npc.eventUntil;
+  }
+  function endEventIfDue(npc, t) {
+    if (!npc.eventAction || t < npc.eventUntil) return;
+    npc.walkAction.reset();
+    npc.eventAction.crossFadeTo(npc.walkAction, 0.25, false);
+    npc.walkAction.play();
+    npc.eventAction = null;
+  }
+
+  Promise.all([
+    loadGLB(PEOPLE.remy.url),
+    loadGLB(PEOPLE.woman.url),
+    loadGLB(PEOPLE.dancer.url),
+    loadGLB(ANIM_URLS.trip).catch(() => null),
+    loadGLB(ANIM_URLS.sing).catch(() => null),
+    Promise.all(SHIRT_PRODUCTS.map((p) => loadImage(p.image))),
+  ]).then(([remyG, womanG, dancerG, tripG, singG, teeImages]) => {
+    usingGLTFHumans = true;
+
+    const walkRemy = stripRootMotion(remyG.animations[0]);
+
+    // Base shirt image for the woman (drawn under the design); Remy's shirt
+    // is whitened so his base image is only used for canvas sizing.
+    const getShirtImage = (gltf, meshName) => {
+      let img = null;
+      gltf.scene.traverse((o) => {
+        if (o.isMesh && o.name === meshName) {
+          const m = Array.isArray(o.material) ? o.material[0] : o.material;
+          if (m && m.map && m.map.image) img = m.map.image;
+        }
+      });
+      return img;
+    };
+    const remyShirtImg = getShirtImage(remyG, PEOPLE.remy.shirtMesh);
+    const womanShirtImg = getShirtImage(womanG, PEOPLE.woman.shirtMesh);
+
+    // Event clip library, retargeted per rig prefix.
+    const tripClip = tripG && stripRootMotion(tripG.animations[0]);
+    const singClip = singG && stripRootMotion(singG.animations[0]);
+    const buildLib = (root, prefix) => ({
+      trip: tripClip && retargetClip(tripClip, ANIM_SOURCE_PREFIX, prefix, root),
+      sing: singClip && retargetClip(singClip, ANIM_SOURCE_PREFIX, prefix, root),
+    });
+
+    // Walker mix: alternate Remy and the woman, each wearing a different tee.
+    const walkerCount = Math.max(2, FIGURE_COUNT - 1);
+    for (let i = 0; i < walkerCount; i++) {
+      const useWoman = i % 3 === 2; // every third walker is the woman
+      const spec = useWoman ? PEOPLE.woman : PEOPLE.remy;
+      const src = useWoman ? womanG : remyG;
+      const shirtImg = useWoman ? womanShirtImg : remyShirtImg;
+      const walk = useWoman
+        ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
+        : walkRemy;
+      const fig = buildHuman(spec, src, walk, teeImages[i % teeImages.length], shirtImg);
+      const npc = spawnNpcCommon(fig, i, { rigPrefix: spec.prefix });
+      if (!eventClips[spec.prefix]) eventClips[spec.prefix] = buildLib(fig.cloned, spec.prefix);
+      void npc;
     }
-  );
+
+    // Street performer: loops the hip-hop clip at the street's edge.
+    const danceClip = stripRootMotion(dancerG.animations[0]);
+    const dancerFig = buildHuman(PEOPLE.dancer, dancerG, danceClip, null, null);
+    const dNpc = spawnNpcCommon(dancerFig, walkerCount, {
+      rigPrefix: PEOPLE.dancer.prefix,
+      static: true,
+      alwaysAnimate: true,
+    });
+    dNpc.group.position.set(2.6, 0, 1.2);
+    dNpc.group.rotation.y = Math.PI * 0.9; // face the camera, slightly angled
+  }).catch((err) => {
+    console.warn("EL VYNCE hero: human models failed to load, using stylized fallback:", err);
+    spawnStylizedFallbackCrowd();
+  });
 
   // ---- Cursor-driven camera parallax ----
   let pointerX = 0;
@@ -798,9 +925,14 @@ function initHeroSilhouette() {
   const PAUSE_DURATION = [1.2, 2.8];
 
   function stepNpcMovement(npc, t, dt) {
+    if (npc.static) return 1; // the dancer holds their spot
+
     if (npc.paused) {
-      if (t > npc.pauseUntil) npc.paused = false;
-    } else if (Math.random() < PAUSE_CHANCE_PER_SEC * dt) {
+      if (t > npc.pauseUntil && !npc.eventAction) npc.paused = false;
+    } else if (npc.isStylized && Math.random() < PAUSE_CHANCE_PER_SEC * dt) {
+      // Random window-shopping pauses suit the stylized fallback; real humans
+      // pause only for street-life events (handled in maybeStartEvent) so the
+      // baked walk clip never freezes mid-stride.
       npc.paused = true;
       npc.pausedAtPathT = t * npc.pathSpeed + npc.pathPhase;
       npc.pauseUntil = t + PAUSE_DURATION[0] + Math.random() * (PAUSE_DURATION[1] - PAUSE_DURATION[0]);
@@ -835,6 +967,8 @@ function initHeroSilhouette() {
       const dt = clock.getDelta();
 
       npcs.forEach((npc) => {
+        maybeStartEvent(npc, t);
+        endEventIfDue(npc, t);
         const walkActive = stepNpcMovement(npc, t, dt);
 
         if (npc.isStylized) {
@@ -853,9 +987,10 @@ function initHeroSilhouette() {
           npc.torso.rotation.z = Math.sin(phase) * 0.02 * walkActive;
           npc.head.rotation.y = Math.sin(phase * 0.5) * 0.06;
         } else if (npc.mixer) {
-          // Slow down/stop the baked walk clip while paused so a "window
-          // shopping" beat doesn't look like moonwalking in place.
-          npc.mixer.update(dt * walkActive);
+          // Events and the dancer always animate; plain walkers freeze the
+          // clip only while path movement is held.
+          const rate = npc.eventAction || npc.alwaysAnimate ? 1 : walkActive;
+          npc.mixer.update(dt * rate);
         }
       });
 
