@@ -591,34 +591,62 @@ function initHeroSilhouette() {
     return found;
   }
 
-  // Composite a product tee design into a character's shirt texture.
+  // Dress a character in a product tee: dye the whole shirt the tee's actual
+  // fabric color (sampled from the product photo), then print the photo's
+  // graphic region onto the chest with feathered edges — so the figure is
+  // wearing the tee, not displaying a picture of one.
+  function sampleFabricColor(teeImage) {
+    const s = document.createElement("canvas");
+    s.width = 3;
+    s.height = 1;
+    const sg = s.getContext("2d");
+    // Three fabric points well away from the center print; average them.
+    const pts = [[0.25, 0.7], [0.75, 0.7], [0.5, 0.85]];
+    pts.forEach(([fx, fy], i) => {
+      sg.drawImage(teeImage, teeImage.width * fx - 4, teeImage.height * fy - 4, 8, 8, i, 0, 1, 1);
+    });
+    const d = sg.getImageData(0, 0, 3, 1).data;
+    const r = Math.round((d[0] + d[4] + d[8]) / 3);
+    const gch = Math.round((d[1] + d[5] + d[9]) / 3);
+    const b = Math.round((d[2] + d[6] + d[10]) / 3);
+    return "rgb(" + r + "," + gch + "," + b + ")";
+  }
+
   function makeTeeTexture(baseImage, teeImage, spec) {
     const size = (baseImage && baseImage.width) || 1024;
     const c = document.createElement("canvas");
     c.width = size;
     c.height = size;
     const g = c.getContext("2d");
-    if (spec.whiten) {
-      // Turn the whole garment white so it matches the product tees.
-      g.fillStyle = "#f2f1ee";
-      g.fillRect(0, 0, size, size);
-    } else if (baseImage) {
-      g.drawImage(baseImage, 0, 0, size, size);
-    }
+    g.fillStyle = teeImage ? sampleFabricColor(teeImage) : "#f2f1ee";
+    g.fillRect(0, 0, size, size);
     if (teeImage) {
+      // Print patch: the graphic band in the middle of the flat-lay photo,
+      // edges feathered so it melts into the same-colored fabric fill.
+      const sx = Math.round(teeImage.width * 0.25);
+      const sy = Math.round(teeImage.height * 0.3);
+      const sw = Math.round(teeImage.width * 0.5);
+      const sh = Math.round(teeImage.height * 0.34);
+      const patch = document.createElement("canvas");
+      patch.width = sw;
+      patch.height = sh;
+      const pg = patch.getContext("2d");
+      pg.drawImage(teeImage, sx, sy, sw, sh, 0, 0, sw, sh);
+      pg.globalCompositeOperation = "destination-in";
+      const grad = pg.createRadialGradient(sw / 2, sh / 2, Math.min(sw, sh) * 0.3, sw / 2, sh / 2, Math.max(sw, sh) * 0.6);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      pg.fillStyle = grad;
+      pg.fillRect(0, 0, sw, sh);
+
       const k = size / 1024; // spec coords are in 1024-space
       const rw = spec.w * k, rh = spec.h * k;
-      // Zoom into the print area of the product photo (the graphic sits in
-      // the middle of the flat-lay shot) so the design reads clearly on the
-      // chest instead of shrinking the whole tee photo into the rect.
-      const sx = teeImage.width * 0.24, sy = teeImage.height * 0.2;
-      const sw = teeImage.width * 0.52, sh = teeImage.height * 0.58;
-      const s = Math.min(rw / sw, rh / sh);
+      const s = Math.min(rw / sw, rh / sh) * 1.15; // slight overshoot; feathered edges tolerate it
       const dw = sw * s, dh = sh * s;
       g.save();
       g.translate((spec.x + spec.w / 2) * k, (spec.y + spec.h / 2) * k);
       if (spec.rot) g.rotate(spec.rot);
-      g.drawImage(teeImage, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+      g.drawImage(patch, -dw / 2, -dh / 2, dw, dh);
       g.restore();
     }
     const t = new THREE.CanvasTexture(c);
@@ -1016,7 +1044,9 @@ function initHeroSilhouette() {
       // Gentle lane wobble so nobody tracks a laser-straight line.
       const wobble = Math.sin(npc.zPos * 0.5 + npc.walkPhase) * 0.18;
       npc.group.position.set(npc.lane + wobble, 0, npc.zPos);
-      npc.group.rotation.y = npc.dir > 0 ? Math.PI : 0;
+      // These rigs face +Z at rotation 0 (verified by freezing a figure), so
+      // walking toward the camera (+z) means rotation 0.
+      npc.group.rotation.y = npc.dir > 0 ? 0 : Math.PI;
       return 1;
     }
 
