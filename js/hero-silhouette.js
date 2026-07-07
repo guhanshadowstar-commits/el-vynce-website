@@ -754,37 +754,122 @@ function initHeroSilhouette() {
     }
   }
 
-  // Occasional "street life" clips: a walker may briefly trip, or stop and
-  // sing. One-shot, then back to walking. Chosen rarely so it stays charming.
+  // ---- "Normal day" behavior engine ----
+  // Every walker runs a tiny state machine (walk / pause / turn / event) with
+  // eased acceleration so nobody starts or stops like a machine. The walk
+  // clip's playback rate is slaved to actual ground speed, keeping stride
+  // physically glued to the pavement at every velocity.
   let eventClips = {}; // per-prefix retargeted { trip, sing }
-  function maybeStartEvent(npc, t, dt) {
-    if (npc.static || npc.isStylized || !npc.walkAction) return;
-    if (t < npc.eventCooldownUntil || npc.eventUntil > t) return;
-    if (Math.random() > 0.025 * dt) return; // ~once per ~40s per figure, framerate-independent
+
+  function startEvent(npc, t, kind) {
     const lib = eventClips[npc.rigPrefix];
-    if (!lib) return;
-    const clip = Math.random() < 0.5 ? lib.trip : lib.sing;
-    if (!clip) return;
+    const clip = lib && lib[kind];
+    if (!clip) return false;
     const action = npc.mixer.clipAction(clip);
     action.reset();
     action.setLoop(THREE.LoopOnce, 1);
     action.clampWhenFinished = false;
-    npc.walkAction.crossFadeTo(action, 0.25, false);
+    npc.walkAction.crossFadeTo(action, 0.35, false);
     action.play();
-    npc.eventUntil = t + clip.duration - 0.25;
+    npc.state = "event";
+    npc.eventType = kind;
+    npc.eventStart = t;
+    // Singing gets faded out early (the full take is ~14s — too long to hold
+    // the street); the trip plays its full stumble-fall-recover arc.
+    npc.eventUntil = t + (kind === "sing" ? 7 : clip.duration - 0.35);
     npc.eventAction = action;
-    npc.eventCooldownUntil = t + clip.duration + 30 + Math.random() * 60;
-    // Freeze the walker's path while the event plays out.
-    npc.paused = true;
-    npc.pausedAtPathT = t * npc.pathSpeed + npc.pathPhase;
-    npc.pauseUntil = npc.eventUntil;
+    npc.eventCooldownUntil = npc.eventUntil + 25 + Math.random() * 40;
+    return true;
   }
-  function endEventIfDue(npc, t) {
-    if (!npc.eventAction || t < npc.eventUntil) return;
-    npc.walkAction.reset();
-    npc.eventAction.crossFadeTo(npc.walkAction, 0.25, false);
-    npc.walkAction.play();
-    npc.eventAction = null;
+
+  function endEvent(npc) {
+    if (npc.eventAction) {
+      npc.walkAction.reset();
+      npc.walkAction.play();
+      npc.eventAction.crossFadeTo(npc.walkAction, 0.35, false);
+      npc.eventAction = null;
+    }
+    npc.state = "walk";
+    npc.targetSpeed = npc.cruise;
+  }
+
+  function stepHuman(npc, t, dt) {
+    // Eased speed — nobody snaps between standing and full stride.
+    npc.speed += (npc.targetSpeed - npc.speed) * Math.min(1, 3.2 * dt);
+    // Stride sync: clip rate follows true ground speed (physics, not loops).
+    npc.walkAction.timeScale = THREE.MathUtils.clamp(npc.speed / npc.strideSpeed, 0.05, 2.2);
+
+    if (npc.state === "walk") {
+      npc.targetSpeed = npc.cruise;
+      npc.zPos += npc.dir * npc.speed * dt;
+
+      // Reached the end of the block: slow down and turn around like a person.
+      if ((npc.dir > 0 && npc.zPos > WALK_Z_MAX) || (npc.dir < 0 && npc.zPos < WALK_Z_MIN)) {
+        npc.state = "turn";
+        npc.turnStart = t;
+        npc.turnFrom = npc.dir > 0 ? 0 : Math.PI;
+        npc.turnTo = npc.dir > 0 ? Math.PI : 0;
+        npc.dir *= -1;
+        npc.targetSpeed = npc.cruise * 0.3;
+      } else if (t > npc.eventCooldownUntil) {
+        // Street-life moments, framerate-independent probabilities.
+        if (Math.random() < dt / 75) startEvent(npc, t, "trip");
+        else if (Math.random() < dt / 60) startEvent(npc, t, "sing");
+        else if (Math.random() < dt / 45) {
+          // Just... stop for a moment. People do that.
+          npc.state = "pause";
+          npc.pauseUntil = t + 1.2 + Math.random() * 2;
+          npc.targetSpeed = 0;
+          npc.eventCooldownUntil = npc.pauseUntil + 15 + Math.random() * 20;
+        }
+      }
+      npc.group.rotation.y = (npc.dir > 0 ? 0 : Math.PI) + Math.sin(t * 0.7 + npc.walkPhase) * 0.05;
+    } else if (npc.state === "turn") {
+      const k = Math.min(1, (t - npc.turnStart) / 0.8);
+      // Ease the body around; keep drifting forward slightly mid-turn.
+      npc.group.rotation.y = npc.turnFrom + (npc.turnTo - npc.turnFrom) * (k * k * (3 - 2 * k));
+      npc.zPos += npc.dir * npc.speed * dt * 0.4;
+      if (k >= 1) {
+        npc.state = "walk";
+        npc.targetSpeed = npc.cruise;
+      }
+    } else if (npc.state === "pause") {
+      if (t > npc.pauseUntil) {
+        npc.state = "walk";
+        npc.targetSpeed = npc.cruise;
+      }
+    } else if (npc.state === "event") {
+      if (npc.eventType === "trip") {
+        // Stumble physics: momentum carries the body forward hard for the
+        // first half-second, bleeds off as they go down, dead stop while
+        // fallen, then they get up (walk state resumes with eased speed).
+        const et = t - npc.eventStart;
+        npc.targetSpeed = et < 0.5 ? npc.cruise * 1.45 : et < 1.0 ? npc.cruise * 0.4 : 0;
+        npc.zPos += npc.dir * npc.speed * dt;
+      } else {
+        npc.targetSpeed = 0;
+      }
+      if (t > npc.eventUntil) endEvent(npc);
+    }
+
+    const wobble = Math.sin(npc.zPos * 0.5 + npc.walkPhase) * 0.18;
+    npc.group.position.set(npc.lane + wobble, 0, npc.zPos);
+  }
+
+  // Personal space: walkers drift apart when they'd otherwise overlap.
+  function resolveCrowding(walkers, dt) {
+    for (let i = 0; i < walkers.length; i++) {
+      for (let j = i + 1; j < walkers.length; j++) {
+        const a = walkers[i], b = walkers[j];
+        const dz = Math.abs(a.zPos - b.zPos);
+        const dx = a.lane - b.lane;
+        if (dz < 1.1 && Math.abs(dx) < 0.8) {
+          const push = (dx >= 0 ? 1 : -1) * 0.6 * dt;
+          a.lane = THREE.MathUtils.clamp(a.lane + push, -3.2, 3.2);
+          b.lane = THREE.MathUtils.clamp(b.lane - push, -3.2, 3.2);
+        }
+      }
+    }
   }
 
   Promise.all([
@@ -838,13 +923,16 @@ function initHeroSilhouette() {
       // Per-figure pace variation, applied to BOTH clip playback and ground
       // speed so stride length stays glued to the pavement.
       const pace = 0.9 + Math.random() * 0.25;
-      if (fig.walkAction) fig.walkAction.timeScale = pace;
       const baseSpeed = strideRaw > 0.01
         ? strideRaw * fig.sizeScale
         : 1.25 * (spec.height / 1.75); // fallback if the clip was exported in-place
       const npc = spawnNpcCommon(fig, i, {
         rigPrefix: spec.prefix,
-        walkSpeed: baseSpeed * pace,
+        strideSpeed: baseSpeed, // ground speed the clip covers at timeScale 1
+        cruise: baseSpeed * pace, // this person's preferred walking speed
+        speed: 0, // everyone eases in from standstill
+        targetSpeed: baseSpeed * pace,
+        state: "walk",
         lane: randomLane(),
         dir: i % 2 === 0 ? 1 : -1,
         zPos: WALK_Z_MIN + Math.random() * (WALK_Z_MAX - WALK_Z_MIN),
@@ -864,6 +952,36 @@ function initHeroSilhouette() {
     });
     dNpc.group.position.set(isSmallScreen ? 1.7 : 2.6, 0, isSmallScreen ? 1.6 : 1.2);
     dNpc.group.rotation.y = Math.PI * 0.9; // face the camera, slightly angled
+
+    // A woman sitting on a street bench, laughing — her own Mixamo clip.
+    // Ordinary city life; nobody performs all the time.
+    const sitClip = stripRootMotion(womanG.animations[0]);
+    const sitterFig = buildHuman(PEOPLE.woman, womanG, sitClip, teeImages[7 % teeImages.length], womanShirtImg);
+    const sitter = spawnNpcCommon(sitterFig, walkerCount + 1, {
+      rigPrefix: PEOPLE.woman.prefix,
+      static: true,
+      alwaysAnimate: true,
+    });
+    const benchX = isSmallScreen ? -2.1 : -3.1;
+    const benchZ = isSmallScreen ? 2.4 : 1.8;
+    sitter.group.position.set(benchX, 0.02, benchZ);
+    sitter.group.rotation.y = Math.PI * 0.55; // angled toward the street
+
+    // Minimal dark bench under her — two slabs, matches the city furniture.
+    const benchMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
+    const bench = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.5), benchMat);
+    seat.position.y = 0.42;
+    bench.add(seat);
+    [-0.6, 0.6].forEach((bx) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.42, 0.42), benchMat);
+      leg.position.set(bx, 0.21, 0);
+      bench.add(leg);
+    });
+    bench.position.set(benchX, 0, benchZ);
+    bench.rotation.y = sitter.group.rotation.y;
+    scene.add(bench);
+    window.__EV_DEBUG.sitter = sitter;
   }).catch((err) => {
     console.warn("EL VYNCE hero: human models failed to load, using stylized fallback:", err);
     spawnStylizedFallbackCrowd();
@@ -1021,33 +1139,12 @@ function initHeroSilhouette() {
   const PAUSE_DURATION = [1.2, 2.8];
 
   function stepNpcMovement(npc, t, dt) {
-    if (npc.static) return 1; // the dancer holds their spot
-
     if (npc.paused) {
-      if (t > npc.pauseUntil && !npc.eventAction) npc.paused = false;
-    } else if (npc.isStylized && Math.random() < PAUSE_CHANCE_PER_SEC * dt) {
-      // Random window-shopping pauses suit the stylized fallback; real humans
-      // pause only for street-life events (handled in maybeStartEvent) so the
-      // baked walk clip never freezes mid-stride.
+      if (t > npc.pauseUntil) npc.paused = false;
+    } else if (Math.random() < PAUSE_CHANCE_PER_SEC * dt) {
       npc.paused = true;
       npc.pausedAtPathT = t * npc.pathSpeed + npc.pathPhase;
       npc.pauseUntil = t + PAUSE_DURATION[0] + Math.random() * (PAUSE_DURATION[1] - PAUSE_DURATION[0]);
-    }
-
-    // Real humans: straight walk along the street at the clip's own ground
-    // speed — feet grip the pavement, no orbital sliding.
-    if (!npc.isStylized) {
-      if (npc.paused) return 0;
-      npc.zPos += npc.dir * npc.walkSpeed * dt;
-      if (npc.zPos > WALK_Z_MAX) { npc.zPos = WALK_Z_MIN; npc.lane = randomLane(); }
-      else if (npc.zPos < WALK_Z_MIN) { npc.zPos = WALK_Z_MAX; npc.lane = randomLane(); }
-      // Gentle lane wobble so nobody tracks a laser-straight line.
-      const wobble = Math.sin(npc.zPos * 0.5 + npc.walkPhase) * 0.18;
-      npc.group.position.set(npc.lane + wobble, 0, npc.zPos);
-      // These rigs face +Z at rotation 0 (verified by freezing a figure), so
-      // walking toward the camera (+z) means rotation 0.
-      npc.group.rotation.y = npc.dir > 0 ? 0 : Math.PI;
-      return 1;
     }
 
     const pathT = npc.paused ? npc.pausedAtPathT : t * npc.pathSpeed + npc.pathPhase;
@@ -1080,10 +1177,15 @@ function initHeroSilhouette() {
       const dt = Math.min(clock.getDelta(), 0.1);
       const t = clock.elapsedTime;
 
+      resolveCrowding(npcs.filter((n) => !n.isStylized && !n.static), dt);
       npcs.forEach((npc) => {
-        maybeStartEvent(npc, t, dt);
-        endEventIfDue(npc, t);
-        const walkActive = stepNpcMovement(npc, t, dt);
+        let walkActive = 1;
+        if (!npc.isStylized && !npc.static && npc.walkAction) {
+          // Real humans: behavior state machine + stride-synced physics.
+          stepHuman(npc, t, dt);
+        } else if (npc.isStylized) {
+          walkActive = stepNpcMovement(npc, t, dt);
+        }
 
         if (npc.isStylized) {
           const phase = t * WALK_SPEED + npc.walkPhase;
@@ -1101,10 +1203,9 @@ function initHeroSilhouette() {
           npc.torso.rotation.z = Math.sin(phase) * 0.02 * walkActive;
           npc.head.rotation.y = Math.sin(phase * 0.5) * 0.06;
         } else if (npc.mixer) {
-          // Events and the dancer always animate; plain walkers freeze the
-          // clip only while path movement is held.
-          const rate = npc.eventAction || npc.alwaysAnimate ? 1 : walkActive;
-          npc.mixer.update(dt * rate);
+          // Humans always tick: ground speed is expressed through the walk
+          // action's timeScale (stepHuman), events/dancer/sitter run at 1.
+          npc.mixer.update(dt);
         }
       });
 
