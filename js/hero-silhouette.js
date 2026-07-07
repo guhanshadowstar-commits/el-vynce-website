@@ -12,6 +12,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 // Real product photography — front print of each tee. Cycled across every figure
 // so, over time, the full catalogue is represented walking the street.
@@ -286,30 +287,36 @@ function createBuilding(w, h, d, paletteIndex) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(0, h / 2, 0);
 
-  // Sparse emissive warm-amber window dots on the two street-facing sides only.
-  const windowGroup = new THREE.Group();
-  const windowGeo = new THREE.PlaneGeometry(w * 0.06, h * 0.03);
+  // Sparse emissive warm-amber window dots on the two street-facing sides.
+  // All dots for a building are merged into a single mesh with one shared
+  // material — per-dot meshes cost a draw call each (~700 scene-wide), which
+  // tanked the frame rate.
   const litFraction = 0.4;
   const maxDots = 26;
   let dotsPlaced = 0;
+  const dotGeos = [];
   for (const cell of windowCells) {
     if (dotsPlaced >= maxDots) break;
     if (Math.random() > litFraction) continue;
-    const dotMat = new THREE.MeshBasicMaterial({ color: 0xffcf8a, transparent: true, opacity: 0 });
-    const dot = new THREE.Mesh(windowGeo, dotMat);
     const px = (cell.c + 0.5) / cell.cols * w - w / 2;
     const py = (cell.rows - cell.r - 0.5) / cell.rows * h - h / 2 + h / 2;
-    dot.position.set(px, py, d / 2 + 0.01);
-    windowGroup.add(dot);
-    const dotBack = new THREE.Mesh(windowGeo, dotMat.clone());
-    dotBack.position.set(-px, py, -d / 2 - 0.01);
-    dotBack.rotation.y = Math.PI;
-    windowGroup.add(dotBack);
+    const front = new THREE.PlaneGeometry(w * 0.06, h * 0.03);
+    front.translate(px, py, d / 2 + 0.01);
+    dotGeos.push(front);
+    const back = new THREE.PlaneGeometry(w * 0.06, h * 0.03);
+    back.rotateY(Math.PI);
+    back.translate(-px, py, -d / 2 - 0.01);
+    dotGeos.push(back);
     dotsPlaced++;
   }
-  mesh.add(windowGroup);
+  let windowDotMaterial = null;
+  if (dotGeos.length) {
+    const merged = mergeGeometries(dotGeos);
+    windowDotMaterial = new THREE.MeshBasicMaterial({ color: 0xffcf8a, transparent: true, opacity: 0 });
+    mesh.add(new THREE.Mesh(merged, windowDotMaterial));
+  }
 
-  return { mesh, facadeMaterial: mat, windowDots: windowGroup.children, edgeTintColor: palette.tint };
+  return { mesh, facadeMaterial: mat, windowDotMaterial, edgeTintColor: palette.tint };
 }
 
 function initHeroSilhouette() {
@@ -350,7 +357,9 @@ function initHeroSilhouette() {
   // resolution beyond 2x was a needless GPU cost with no visible gain.
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setSize(width, height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Phones cap at 1.5x: full retina DPR doubles the fill cost of the skinned
+  // crowd for detail that isn't visible at street distance.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isSmallScreen ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.style.cursor = "default";
   mount.appendChild(renderer.domElement);
@@ -463,7 +472,7 @@ function initHeroSilhouette() {
         building.mesh.position.z = z + (Math.random() - 0.5) * 1.2;
         scene.add(building.mesh);
         buildingFacadeMaterials.push(building.facadeMaterial);
-        allWindowDots.push(...building.windowDots);
+        if (building.windowDotMaterial) allWindowDots.push(building.windowDotMaterial);
 
         // Subtle edge line per building for crisp definition against the sky.
         const edgeGeo = new THREE.EdgesGeometry(building.mesh.geometry);
@@ -536,6 +545,29 @@ function initHeroSilhouette() {
       tracks.push(t2);
     });
     return new THREE.AnimationClip(clip.name, clip.duration, tracks);
+  }
+
+  // Measure how fast the walk clip's root motion covers ground (world
+  // units/sec at the rig's native scale) by sampling the hips bone at the
+  // clip's start and end. Must run BEFORE stripRootMotion pins the hips.
+  // Movement code drives walkers at exactly this speed (times the figure's
+  // world scale) so feet grip the pavement instead of sliding.
+  function measureStrideSpeed(gltfScene, clip) {
+    const hips = findBoneByName(gltfScene, "hips");
+    if (!hips || !clip.duration) return 0;
+    const mixer = new THREE.AnimationMixer(gltfScene);
+    const action = mixer.clipAction(clip);
+    action.play();
+    mixer.setTime(0);
+    gltfScene.updateMatrixWorld(true);
+    const p0 = hips.getWorldPosition(new THREE.Vector3());
+    mixer.setTime(clip.duration - 0.001);
+    gltfScene.updateMatrixWorld(true);
+    const p1 = hips.getWorldPosition(new THREE.Vector3());
+    mixer.stopAllAction();
+    mixer.setTime(0);
+    gltfScene.updateMatrixWorld(true);
+    return Math.hypot(p1.x - p0.x, p1.z - p0.z) / clip.duration;
   }
 
   // Pin the hips' X/Z to the first keyframe so clips play "in place" — path
@@ -625,7 +657,7 @@ function initHeroSilhouette() {
     const cloned = skeletonClone(base.scene);
     const group = new THREE.Group();
     group.add(cloned);
-    fitHuman(cloned, group, spec.height);
+    const sizeScale = fitHuman(cloned, group, spec.height);
 
     // Swap the shirt texture for one carrying the product design.
     if (spec.shirtMesh && spec.tee) {
@@ -646,7 +678,16 @@ function initHeroSilhouette() {
       walkAction.time = Math.random() * (walkClip.duration || 1);
       mixer.update(0);
     }
-    return { group, mixer, cloned, walkAction, isStylized: false };
+    return { group, mixer, cloned, walkAction, sizeScale, isStylized: false };
+  }
+
+  // Street lanes for human walkers: straight walks up/down the street at
+  // stride-matched speed, wrapping around out of frame — much more natural
+  // than orbiting a point.
+  const WALK_Z_MIN = -13;
+  const WALK_Z_MAX = isSmallScreen ? 9 : 5;
+  function randomLane() {
+    return (Math.random() * 2 - 1) * (isSmallScreen ? 2.2 : 3.0);
   }
 
   function spawnNpcCommon(fig, index, opts) {
@@ -688,10 +729,10 @@ function initHeroSilhouette() {
   // Occasional "street life" clips: a walker may briefly trip, or stop and
   // sing. One-shot, then back to walking. Chosen rarely so it stays charming.
   let eventClips = {}; // per-prefix retargeted { trip, sing }
-  function maybeStartEvent(npc, t) {
+  function maybeStartEvent(npc, t, dt) {
     if (npc.static || npc.isStylized || !npc.walkAction) return;
     if (t < npc.eventCooldownUntil || npc.eventUntil > t) return;
-    if (Math.random() > 0.003) return; // ~once per ~5.5min per figure at 60fps
+    if (Math.random() > 0.025 * dt) return; // ~once per ~40s per figure, framerate-independent
     const lib = eventClips[npc.rigPrefix];
     if (!lib) return;
     const clip = Math.random() < 0.5 ? lib.trip : lib.sing;
@@ -728,6 +769,8 @@ function initHeroSilhouette() {
   ]).then(([remyG, womanG, dancerG, tripG, singG, teeImages]) => {
     usingGLTFHumans = true;
 
+    // Ground speed baked into the walk clip, measured before pinning the hips.
+    const strideRaw = measureStrideSpeed(remyG.scene, remyG.animations[0]);
     const walkRemy = stripRootMotion(remyG.animations[0]);
 
     // Base shirt image for the woman (drawn under the design); Remy's shirt
@@ -764,10 +807,24 @@ function initHeroSilhouette() {
         ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
         : walkRemy;
       const fig = buildHuman(spec, src, walk, teeImages[i % teeImages.length], shirtImg);
-      const npc = spawnNpcCommon(fig, i, { rigPrefix: spec.prefix });
+      // Per-figure pace variation, applied to BOTH clip playback and ground
+      // speed so stride length stays glued to the pavement.
+      const pace = 0.9 + Math.random() * 0.25;
+      if (fig.walkAction) fig.walkAction.timeScale = pace;
+      const baseSpeed = strideRaw > 0.01
+        ? strideRaw * fig.sizeScale
+        : 1.25 * (spec.height / 1.75); // fallback if the clip was exported in-place
+      const npc = spawnNpcCommon(fig, i, {
+        rigPrefix: spec.prefix,
+        walkSpeed: baseSpeed * pace,
+        lane: randomLane(),
+        dir: i % 2 === 0 ? 1 : -1,
+        zPos: WALK_Z_MIN + Math.random() * (WALK_Z_MAX - WALK_Z_MIN),
+      });
       if (!eventClips[spec.prefix]) eventClips[spec.prefix] = buildLib(fig.cloned, spec.prefix);
       void npc;
     }
+    window.__EV_DEBUG.strideRaw = strideRaw;
 
     // Street performer: loops the hip-hop clip at the street's edge.
     const danceClip = stripRootMotion(dancerG.animations[0]);
@@ -907,8 +964,8 @@ function initHeroSilhouette() {
 
     // Window dots: invisible by day, glow warm amber once dusk sets in.
     const windowGlow = Math.max(0, (nightAmount - 0.45) / 0.55);
-    allWindowDots.forEach((dot) => {
-      dot.material.opacity = windowGlow * 0.95;
+    allWindowDots.forEach((m) => {
+      m.opacity = windowGlow * 0.95;
     });
 
     // Building edge lines darken/lighten subtly with time of day for definition
@@ -949,6 +1006,20 @@ function initHeroSilhouette() {
       npc.pauseUntil = t + PAUSE_DURATION[0] + Math.random() * (PAUSE_DURATION[1] - PAUSE_DURATION[0]);
     }
 
+    // Real humans: straight walk along the street at the clip's own ground
+    // speed — feet grip the pavement, no orbital sliding.
+    if (!npc.isStylized) {
+      if (npc.paused) return 0;
+      npc.zPos += npc.dir * npc.walkSpeed * dt;
+      if (npc.zPos > WALK_Z_MAX) { npc.zPos = WALK_Z_MIN; npc.lane = randomLane(); }
+      else if (npc.zPos < WALK_Z_MIN) { npc.zPos = WALK_Z_MAX; npc.lane = randomLane(); }
+      // Gentle lane wobble so nobody tracks a laser-straight line.
+      const wobble = Math.sin(npc.zPos * 0.5 + npc.walkPhase) * 0.18;
+      npc.group.position.set(npc.lane + wobble, 0, npc.zPos);
+      npc.group.rotation.y = npc.dir > 0 ? Math.PI : 0;
+      return 1;
+    }
+
     const pathT = npc.paused ? npc.pausedAtPathT : t * npc.pathSpeed + npc.pathPhase;
     const x = npc.centerX + Math.cos(pathT) * npc.pathRadiusX;
     const z = npc.centerZ + Math.sin(pathT * 1.3) * npc.pathRadiusZ;
@@ -974,11 +1045,13 @@ function initHeroSilhouette() {
     function animate() {
       requestAnimationFrame(animate);
       if (!isVisible || tabHidden) return;
-      const t = clock.getElapsedTime();
-      const dt = clock.getDelta();
+      // Order matters: getElapsedTime() internally consumes the delta, so
+      // getDelta() must run first or every animation advances at ~0 speed.
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const t = clock.elapsedTime;
 
       npcs.forEach((npc) => {
-        maybeStartEvent(npc, t);
+        maybeStartEvent(npc, t, dt);
         endEventIfDue(npc, t);
         const walkActive = stepNpcMovement(npc, t, dt);
 
