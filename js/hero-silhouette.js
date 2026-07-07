@@ -31,6 +31,9 @@ const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for p
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
 const FIGURE_COUNT = isSmallScreen ? 5 : 8;
 const BUILDINGS_PER_ROW = isSmallScreen ? 1 : 2;
+// Horizontal reach of the sun/moon arc: the narrow portrait frustum can only
+// see ~±8 world units at the sky plane, so the arc is tightened on phones.
+const CELESTIAL_X = isSmallScreen ? 6 : 15;
 
 const prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -321,17 +324,25 @@ function initHeroSilhouette() {
   scene.background = null;
 
   // Base camera pose (before parallax/scroll offsets are applied each frame).
-  const BASE_CAM_POS = new THREE.Vector3(0, 2.6, 8.2);
-  const BASE_CAM_TARGET = new THREE.Vector3(0, 1.1, 0);
+  // Portrait phones get a pulled-back, wider-angle framing: the desktop pose
+  // crops the street canyon to a sliver on a tall narrow viewport.
+  const BASE_CAM_POS = isSmallScreen
+    ? new THREE.Vector3(0, 3.0, 12.5)
+    : new THREE.Vector3(0, 2.6, 8.2);
+  const BASE_CAM_TARGET = isSmallScreen
+    ? new THREE.Vector3(0, 1.4, -1.5)
+    : new THREE.Vector3(0, 1.1, 0);
   // Scroll-pulled-back pose — camera rises and retreats as the visitor scrolls past the hero.
-  const SCROLL_CAM_POS = new THREE.Vector3(0, 6.5, 16);
+  const SCROLL_CAM_POS = isSmallScreen
+    ? new THREE.Vector3(0, 7, 19)
+    : new THREE.Vector3(0, 6.5, 16);
   const SCROLL_CAM_TARGET = new THREE.Vector3(0, 2, 0);
   // Slow cinematic drift added on top of the base pose.
   const DRIFT_AMPLITUDE_X = 0.6;
   const DRIFT_AMPLITUDE_Y = 0.18;
   const DRIFT_SPEED = 0.06;
 
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 55 : 45, width / height, 0.1, 100);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
@@ -645,11 +656,11 @@ function initHeroSilhouette() {
       ...fig,
       ...opts,
       productId: product.id,
-      pathRadiusX: 1.6 + Math.random() * 1.8,
+      pathRadiusX: (isSmallScreen ? 0.9 : 1.6) + Math.random() * (isSmallScreen ? 1.0 : 1.8),
       pathRadiusZ: 1.0 + Math.random() * 1.2,
       pathSpeed: (0.1 + Math.random() * 0.12),
       pathPhase: Math.random() * Math.PI * 2,
-      centerX: (index - (FIGURE_COUNT - 1) / 2) * 1.6 + (Math.random() - 0.5) * 0.6,
+      centerX: (index - (FIGURE_COUNT - 1) / 2) * (isSmallScreen ? 1.15 : 1.6) + (Math.random() - 0.5) * 0.6,
       centerZ: -1 + (Math.random() - 0.5) * 1.5,
       walkPhase: Math.random() * Math.PI * 2,
       scale: 1,
@@ -766,7 +777,7 @@ function initHeroSilhouette() {
       static: true,
       alwaysAnimate: true,
     });
-    dNpc.group.position.set(2.6, 0, 1.2);
+    dNpc.group.position.set(isSmallScreen ? 1.7 : 2.6, 0, isSmallScreen ? 1.6 : 1.2);
     dNpc.group.rotation.y = Math.PI * 0.9; // face the camera, slightly angled
   }).catch((err) => {
     console.warn("EL VYNCE hero: human models failed to load, using stylized fallback:", err);
@@ -868,14 +879,14 @@ function initHeroSilhouette() {
     const sunArc = THREE.MathUtils.clamp((hour - 6) / (18.5 - 6), 0, 1) * Math.PI;
     // Arc peak stays inside the camera frustum (45° FOV, slight downward tilt
     // → sky is only visible up to y≈9 at z=-22; higher and the sun vanishes).
-    sunDisc.position.set(Math.cos(sunArc) * -15, 1.5 + Math.sin(sunArc) * 6.5, -22);
+    sunDisc.position.set(Math.cos(sunArc) * -CELESTIAL_X, 1.5 + Math.sin(sunArc) * 6.5, -22);
     sunDisc.visible = sunAlt > 0.001;
     sunDisc.material.opacity = Math.min(1, sunAlt * 2.2);
     sunHaloMat.opacity = 0.3 + sunAlt * 0.25;
 
     let moonHour = hour < 6 ? hour + 24 : hour;
     const moonArc = THREE.MathUtils.clamp((moonHour - 18.5) / (30 - 18.5), 0, 1) * Math.PI;
-    moonDisc.position.set(Math.cos(moonArc) * -15, 1.5 + Math.sin(moonArc) * 6.5, -22);
+    moonDisc.position.set(Math.cos(moonArc) * -CELESTIAL_X, 1.5 + Math.sin(moonArc) * 6.5, -22);
     moonDisc.visible = moonAlt > 0.001;
     moonDisc.material.opacity = Math.min(1, moonAlt * 2.2);
     moonHaloMat.opacity = 0.22 + moonAlt * 0.2;
