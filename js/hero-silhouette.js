@@ -30,8 +30,8 @@ const SHIRT_PRODUCTS = [
 
 const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for perf.
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
-const FIGURE_COUNT = isSmallScreen ? 5 : 8;
-const BUILDINGS_PER_ROW = isSmallScreen ? 1 : 2;
+const FIGURE_COUNT = isSmallScreen ? 6 : 8;
+const BUILDINGS_PER_ROW = 2; // dot-merge perf fix made the full city affordable on phones
 // Horizontal reach of the sun/moon arc: the narrow portrait frustum can only
 // see ~±8 world units at the sky plane, so the arc is tightened on phones.
 const CELESTIAL_X = isSmallScreen ? 6 : 15;
@@ -334,10 +334,10 @@ function initHeroSilhouette() {
   // Portrait phones get a pulled-back, wider-angle framing: the desktop pose
   // crops the street canyon to a sliver on a tall narrow viewport.
   const BASE_CAM_POS = isSmallScreen
-    ? new THREE.Vector3(0, 3.0, 12.5)
+    ? new THREE.Vector3(0, 4.2, 16)
     : new THREE.Vector3(0, 2.6, 8.2);
   const BASE_CAM_TARGET = isSmallScreen
-    ? new THREE.Vector3(0, 1.4, -1.5)
+    ? new THREE.Vector3(0, 1.9, -4)
     : new THREE.Vector3(0, 1.1, 0);
   // Scroll-pulled-back pose — camera rises and retreats as the visitor scrolls past the hero.
   const SCROLL_CAM_POS = isSmallScreen
@@ -349,7 +349,7 @@ function initHeroSilhouette() {
   const DRIFT_AMPLITUDE_Y = 0.18;
   const DRIFT_SPEED = 0.06;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 55 : 45, width / height, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 60 : 45, width / height, 0.1, 100);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
