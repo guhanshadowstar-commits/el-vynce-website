@@ -295,6 +295,18 @@ header.is-night a.bg-primary.text-on-primary {
 }
 
 /* ── Spinning Brand Stamp — fixed, glides site-wide ── */
+/* On the homepage (body.ev-has-hero, set by hero-silhouette.js) the stamp
+   stays hidden over the hero scene and fades in once the visitor scrolls
+   into the catalogue (body.ev-stamp-in, toggled on scroll progress). Other
+   pages never get ev-has-hero, so the stamp shows immediately there. */
+body.ev-has-hero .ev-brand-stamp {
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+body.ev-has-hero.ev-stamp-in .ev-brand-stamp {
+  opacity: 1;
+}
+
 .ev-brand-stamp {
   position: fixed;
   bottom: 90px;

@@ -1,13 +1,17 @@
-/* EL VYNCE — cinematic full-color city hero, real-time day/night cycle.
-   A downtown street scene (colored sky, glowing sun/moon, muted-color buildings,
-   warm/cool directional light) populated by real Mixamo human characters
-   (models/people/*.glb) walking the street, each with a product tee design
-   composited into their shirt texture, plus a hip-hop street performer and
-   rare trip/sing street-life moments. Falls back to stylized procedural
-   figures if the GLBs fail to load, so the hero never breaks. Time of day is
-   driven by the visitor's actual local clock, not a fake loop. Interactive:
-   click a figure to jump to its product, cursor parallax, scroll-linked
-   camera pull-back. ES module (three.js r0.160). No build step. */
+/* EL VYNCE — "Rush Hour, 8:59 AM" cinematic city hero.
+   A premium business district at morning rush: slim glass towers with
+   sky-reflection facades, real sidewalks + curbs + streetlamps + planters,
+   a working pedestrian signal that gathers commuters at the curb and releases
+   them across the road in waves, real Mixamo humans wearing the actual product
+   tees (fabric-dyed + chest print composited), a street dancer, a bench
+   sitter, a sidewalk conversation pair. Time of day AND crowd density are
+   driven by the visitor's real local clock — morning/evening rush is full,
+   midday lighter, night sparse with lit windows and lamp pools. Desktop gets
+   true directional sun shadows + ACES film tone mapping; phones get soft
+   contact shadows and trimmed counts. Falls back to stylized procedural
+   figures if the GLBs fail, so the hero never breaks. Interactive: click a
+   figure to open its product, cursor parallax, scroll camera pull-back.
+   ES module (three.js r0.160). No build step. */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -27,14 +31,29 @@ const SHIRT_PRODUCTS = [
   { image: "images/products/style-pays-off-front.jpg", id: "ev-004" },
 ];
 
-
 const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for perf.
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
-const FIGURE_COUNT = isSmallScreen ? 6 : 8;
-const BUILDINGS_PER_ROW = 2; // dot-merge perf fix made the full city affordable on phones
+// Commuter walkers (the rush-hour stream). Dancer, bench sitter and the
+// conversation pair are added on top of these.
+const WALKER_COUNT = isSmallScreen ? 6 : 10;
+const FIGURE_COUNT = isSmallScreen ? 6 : 8; // stylized fallback crowd size
 // Horizontal reach of the sun/moon arc: the narrow portrait frustum can only
 // see ~±8 world units at the sky plane, so the arc is tightened on phones.
 const CELESTIAL_X = isSmallScreen ? 6 : 15;
+
+// ---- District ground plan (world units, street runs along Z) ----
+const ROAD_HALF = 2.2;            // road spans x ∈ [-2.2, 2.2]
+const SIDEWALK_H = 0.06;          // raised pavement height
+const LANE_MIN = 2.7;             // walkers keep to the sidewalk band
+const LANE_MAX = isSmallScreen ? 3.6 : 4.3;
+const CROSS_Z = 2.0;              // crosswalk position along the street
+const CURB_WAIT_X = 2.55;         // where waiters gather before crossing
+const WALK_Z_MIN = -13;
+const WALK_Z_MAX = isSmallScreen ? 9 : 5;
+// Pedestrian signal: 10s walk, 16s wait — long enough for a crowd to gather
+// at the curb, so each green releases a satisfying crossing wave.
+const SIGNAL_CYCLE = 26;
+const SIGNAL_GREEN = 10;
 
 const prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -138,6 +157,23 @@ function nightAmountFor(hour) {
   return THREE.MathUtils.clamp(1 - sunAlt * 1.4, 0, 1);
 }
 
+// Crowd density across the day — the district lives on the visitor's clock:
+// full streams at morning/evening rush, calmer midday, sparse late night.
+function crowdDensityFor(hour) {
+  if (hour >= 6.5 && hour < 10) return 1; // morning rush — the signature look
+  if (hour >= 10 && hour < 16.5) return 0.6; // working day
+  if (hour >= 16.5 && hour < 20) return 1; // evening exit
+  if (hour >= 20 && hour < 23) return 0.45; // dinner hours
+  return 0.3; // late night / pre-dawn
+}
+
+function shortestAngle(a) {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
+function smoothstep01(k) {
+  return k * k * (3 - 2 * k);
+}
+
 // addEdges() draws a thin outline (EdgesGeometry) over a solid mesh so shapes
 // keep a crisp graphic silhouette instead of dissolving into flat shading.
 function addEdges(mesh, color = 0x000000, opacity = 0.35) {
@@ -149,9 +185,8 @@ function addEdges(mesh, color = 0x000000, opacity = 0.35) {
 }
 
 // ---------------------------------------------------------------------------
-// Fallback stylized human figure (used only if Soldier.glb fails to load) —
-// proper head/shoulders/arms/legs with a natural walk swing. Not a blocky
-// android: capsule limbs, rounded head, torso taper.
+// Fallback stylized human figure (used only if the GLBs fail to load) —
+// proper head/shoulders/arms/legs with a natural walk swing.
 // ---------------------------------------------------------------------------
 function makeLimbPair(upperLen, upperRadius, lowerLen, lowerRadius, originY, sideOffset, material) {
   const upperGroup = new THREE.Group();
@@ -196,9 +231,6 @@ function attachShirtPlane(parent, shirtImageUrl, yOffset = 0.05, z = 0.345) {
 }
 
 function createStylizedFigure(shirtImageUrl) {
-  // Warm-neutral skin/clothing tone (not pure black) so the figure reads as a
-  // human silhouette rather than a monochrome android, while staying subdued
-  // enough that the tee graphic on the chest remains the focal point.
   const clothing = new THREE.MeshStandardMaterial({ color: 0x2e2b28, roughness: 0.85, metalness: 0.05 });
   const skinTone = new THREE.MeshStandardMaterial({ color: 0xc79a75, roughness: 0.7, metalness: 0 });
 
@@ -210,8 +242,6 @@ function createStylizedFigure(shirtImageUrl) {
   torso.position.set(0, 1.05, 0);
   figure.add(torso);
 
-  // Real product photo mapped onto the chest. Falls back to a plain dark panel
-  // if the texture fails to load rather than showing a broken/blank plane.
   attachShirtPlane(torso, shirtImageUrl);
 
   const headGeo = new THREE.SphereGeometry(0.2, 16, 16);
@@ -245,100 +275,256 @@ function createStylizedFigure(shirtImageUrl) {
   };
 }
 
-// Builds one building box with a canvas-drawn facade texture (muted realistic
-// color + window grid) plus small emissive amber "window" sprites that stay
-// invisible by day and glow warm at night.
-const FACADE_PALETTES = [
-  { base: "#a99483", window: "#7a6a5c", tint: 0xd8c9b8 }, // warm sandstone
-  { base: "#8d95a1", window: "#666e78", tint: 0xc3cad4 }, // cool grigio
-  { base: "#7d8b93", window: "#57646c", tint: 0xaeb8c2 }, // glass-blue tint
-  { base: "#9c8f7a", window: "#6f6353", tint: 0xd2c4ab }, // warm gray
+// ---------------------------------------------------------------------------
+// Premium tower builder — slim glass office towers with a vertical sky-
+// reflection gradient, per-floor spandrel bands, mullion lines, a dark lobby
+// band with a lit entrance, parapet caps and optional upper setbacks. Facade
+// is a generated canvas (no downloads); night windows are sparse emissive
+// dots merged into ONE mesh per tower (per-dot meshes cost a draw call each).
+// ---------------------------------------------------------------------------
+const TOWER_PALETTES = [
+  { glassTop: "#c5d8e8", glassBottom: "#7d94a8", mullion: "#3f4a54", spandrel: "#5a6773", lobby: "#20262c" }, // blue glass
+  { glassTop: "#aab3bd", glassBottom: "#565f6a", mullion: "#333a41", spandrel: "#454d56", lobby: "#191d21" }, // charcoal
+  { glassTop: "#d6ccba", glassBottom: "#a3937c", mullion: "#5d5347", spandrel: "#7d7161", lobby: "#241f18" }, // greige stone
+  { glassTop: "#c8b494", glassBottom: "#8d7758", mullion: "#4a3b28", spandrel: "#63523a", lobby: "#1d160d" }, // bronze
 ];
 
-function createBuilding(w, h, d, paletteIndex) {
-  const geo = new THREE.BoxGeometry(w, h, d);
-  const palette = FACADE_PALETTES[paletteIndex % FACADE_PALETTES.length];
-
+function makeFacadeTexture(palette, floors, bays, withLobby) {
+  const W = 192, H = 384;
   const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = palette.base;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = palette.window;
-  const cols = 4;
-  const rows = Math.round(8 * (h / 6));
-  const cellW = canvas.width / cols;
-  const cellH = canvas.height / rows;
-  const windowCells = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cx = c * cellW + cellW * 0.22;
-      const cy = r * cellH + cellH * 0.22;
-      const cw = cellW * 0.56;
-      const ch = cellH * 0.56;
-      ctx.fillRect(cx, cy, cw, ch);
-      windowCells.push({ r, c, rows, cols });
+  canvas.width = W;
+  canvas.height = H;
+  const g = canvas.getContext("2d");
+
+  // Glass body: brighter at the top where it reflects sky — the single detail
+  // that makes a flat box read as a glass tower.
+  const grad = g.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, palette.glassTop);
+  grad.addColorStop(1, palette.glassBottom);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+
+  const lobbyH = withLobby ? Math.round(H * 0.085) : 0;
+  const bodyH = H - lobbyH;
+  const floorH = bodyH / floors;
+  const bayW = W / bays;
+
+  // Per-floor spandrel band + per-bay reflection variance (some panes catch
+  // more sky, some less — uniform glass looks like plastic).
+  for (let r = 0; r < floors; r++) {
+    const y0 = r * floorH;
+    for (let c = 0; c < bays; c++) {
+      const v = Math.random();
+      g.fillStyle = v < 0.5
+        ? "rgba(255,255,255," + (Math.random() * 0.13).toFixed(3) + ")"
+        : "rgba(10,16,22," + (Math.random() * 0.13).toFixed(3) + ")";
+      g.fillRect(c * bayW + 1, y0, bayW - 2, floorH * 0.74);
     }
+    g.fillStyle = palette.spandrel;
+    g.globalAlpha = 0.92;
+    g.fillRect(0, y0 + floorH * 0.74, W, floorH * 0.26);
+    g.globalAlpha = 1;
   }
+
+  // Vertical mullions — the fine lines that give the facade its rhythm.
+  g.fillStyle = palette.mullion;
+  for (let c = 0; c <= bays; c++) {
+    g.fillRect(Math.min(W - 2, c * bayW), 0, 2, bodyH);
+  }
+
+  if (withLobby) {
+    g.fillStyle = palette.lobby;
+    g.fillRect(0, bodyH, W, lobbyH);
+    // Cornice line above the lobby.
+    g.fillStyle = palette.mullion;
+    g.fillRect(0, bodyH - 2, W, 3);
+    // Softly lit entrance in the center bay — barely-there, like glass
+    // catching the lobby light, not a billboard.
+    g.fillStyle = "rgba(255,236,205,0.11)";
+    g.fillRect(W * 0.42, bodyH + lobbyH * 0.2, W * 0.16, lobbyH * 0.72);
+  }
+
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 0.85, metalness: 0.08 });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(0, h / 2, 0);
+  return tex;
+}
 
-  // Sparse emissive warm-amber window dots on the two street-facing sides.
-  // All dots for a building are merged into a single mesh with one shared
-  // material — per-dot meshes cost a draw call each (~700 scene-wide), which
-  // tanked the frame rate.
-  const litFraction = 0.4;
+// innerFaceSign: which ±X face of the tower looks onto the street (gets night
+// window dots); pass 0 to skip the side dots (far skyline row).
+function createTower(w, h, d, paletteIndex, innerFaceSign) {
+  const palette = TOWER_PALETTES[paletteIndex % TOWER_PALETTES.length];
+  const group = new THREE.Group();
+
+  const hasSetback = h > 7.5 && Math.random() < 0.55;
+  const mainH = hasSetback ? h * 0.68 : h;
+  const floors = THREE.MathUtils.clamp(Math.round(mainH * 2.4), 8, 26);
+  const bays = 6;
+  const tex = makeFacadeTexture(palette, floors, bays, true);
+  const facadeMaterial = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.2 });
+
+  const main = new THREE.Mesh(new THREE.BoxGeometry(w, mainH, d), facadeMaterial);
+  main.position.y = mainH / 2;
+  main.castShadow = main.receiveShadow = !isSmallScreen;
+  group.add(main);
+
+  const parapetMat = new THREE.MeshStandardMaterial({ color: 0x272b30, roughness: 0.8 });
+  const parapet = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, 0.1, d + 0.08), parapetMat);
+  parapet.position.y = mainH + 0.05;
+  group.add(parapet);
+
+  if (hasSetback) {
+    const uw = w * 0.72, ud = d * 0.72, uh = h * 0.34;
+    const upperTex = makeFacadeTexture(palette, Math.max(6, Math.round(uh * 2.4)), 5, false);
+    const upper = new THREE.Mesh(
+      new THREE.BoxGeometry(uw, uh, ud),
+      new THREE.MeshStandardMaterial({ map: upperTex, roughness: 0.55, metalness: 0.2 })
+    );
+    upper.position.y = mainH + uh / 2;
+    upper.castShadow = upper.receiveShadow = !isSmallScreen;
+    group.add(upper);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(uw + 0.06, 0.08, ud + 0.06), parapetMat);
+    cap.position.y = mainH + uh + 0.04;
+    group.add(cap);
+  } else if (Math.random() < 0.5) {
+    // Rooftop plant unit — real skylines are never perfectly clean boxes.
+    const unit = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, 0.16, d * 0.26), parapetMat);
+    unit.position.set(w * 0.2, mainH + 0.18, -d * 0.15);
+    group.add(unit);
+  }
+
+  // Night windows: sparse warm dots on the camera-facing ±Z faces and the
+  // street-facing ±X face, merged into a single mesh.
+  const litFraction = 0.34;
   const maxDots = 26;
   let dotsPlaced = 0;
   const dotGeos = [];
-  for (const cell of windowCells) {
-    if (dotsPlaced >= maxDots) break;
-    if (Math.random() > litFraction) continue;
-    const px = (cell.c + 0.5) / cell.cols * w - w / 2;
-    const py = (cell.rows - cell.r - 0.5) / cell.rows * h - h / 2 + h / 2;
-    const front = new THREE.PlaneGeometry(w * 0.06, h * 0.03);
-    front.translate(px, py, d / 2 + 0.01);
-    dotGeos.push(front);
-    const back = new THREE.PlaneGeometry(w * 0.06, h * 0.03);
-    back.rotateY(Math.PI);
-    back.translate(-px, py, -d / 2 - 0.01);
-    dotGeos.push(back);
-    dotsPlaced++;
+  for (let r = 1; r < floors - 1 && dotsPlaced < maxDots; r++) {
+    for (let c = 0; c < bays && dotsPlaced < maxDots; c++) {
+      if (Math.random() > litFraction) continue;
+      const py = ((floors - r - 0.5) / floors) * mainH;
+      const px = ((c + 0.5) / bays) * w - w / 2;
+      const front = new THREE.PlaneGeometry(w * 0.07, mainH * 0.028);
+      front.translate(px, py, d / 2 + 0.012);
+      dotGeos.push(front);
+      const back = new THREE.PlaneGeometry(w * 0.07, mainH * 0.028);
+      back.rotateY(Math.PI);
+      back.translate(-px, py, -d / 2 - 0.012);
+      dotGeos.push(back);
+      if (innerFaceSign) {
+        const pz = ((c + 0.5) / bays) * d - d / 2;
+        const sideDot = new THREE.PlaneGeometry(d * 0.07, mainH * 0.028);
+        sideDot.rotateY(innerFaceSign > 0 ? Math.PI / 2 : -Math.PI / 2);
+        sideDot.translate(innerFaceSign * (w / 2 + 0.012), py, pz);
+        dotGeos.push(sideDot);
+      }
+      dotsPlaced++;
+    }
   }
   let windowDotMaterial = null;
   if (dotGeos.length) {
     const merged = mergeGeometries(dotGeos);
     windowDotMaterial = new THREE.MeshBasicMaterial({ color: 0xffcf8a, transparent: true, opacity: 0 });
-    mesh.add(new THREE.Mesh(merged, windowDotMaterial));
+    windowDotMaterial.toneMapped = false;
+    group.add(new THREE.Mesh(merged, windowDotMaterial));
   }
 
-  return { mesh, facadeMaterial: mat, windowDotMaterial, edgeTintColor: palette.tint };
+  // Crisp edge line so towers stay defined against both bright and night sky.
+  const edgeGeo = new THREE.EdgesGeometry(main.geometry);
+  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x20242a, transparent: true, opacity: 0.2 });
+  main.add(new THREE.LineSegments(edgeGeo, edgeMaterial));
+
+  return { group, facadeMaterial, windowDotMaterial, edgeMaterial };
+}
+
+// Soft radial blob texture — reused for phone contact shadows and the warm
+// light pools under streetlamps at night.
+function makeRadialTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(64, 64, 6, 64, 64, 62);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+// Light-stone pavement with paving joints for the sidewalks.
+function makePavementTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = "#cfc9bd";
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.05)";
+    g.fillRect(Math.random() * 256, Math.random() * 256, 1.6, 1.6);
+  }
+  g.strokeStyle = "rgba(0,0,0,0.10)";
+  g.lineWidth = 2;
+  for (let p = 0; p <= 256; p += 64) {
+    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, 256); g.stroke();
+    g.beginPath(); g.moveTo(0, p); g.lineTo(256, p); g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 14);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeAsphaltTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = "#3a3c42";
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1400; i++) {
+    g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.05)";
+    g.fillRect(Math.random() * 256, Math.random() * 256, 1.4, 1.4);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 8);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Pavement height under a figure: 0 on the road, SIDEWALK_H on the sidewalks,
+// with a short ramp at the curb so crossers visibly step down/up.
+function pavementY(x) {
+  const a = Math.abs(x);
+  if (a >= 2.5) return SIDEWALK_H;
+  if (a <= ROAD_HALF) return 0;
+  return ((a - ROAD_HALF) / 0.3) * SIDEWALK_H;
 }
 
 function initHeroSilhouette() {
   const mount = document.getElementById("hero-silhouette");
   const heroHeader = mount ? mount.closest("header") : null;
   if (!mount) return;
+  // Marks the homepage so the brand stamp can stay hidden over the hero and
+  // fade in after scroll (style.css: body.ev-has-hero rules).
+  document.body.classList.add("ev-has-hero");
 
   const width = mount.clientWidth || window.innerWidth;
   const height = mount.clientHeight || window.innerHeight;
 
   const scene = new THREE.Scene();
   scene.background = null;
+  // Morning haze: distant towers melt into the sky color (updated per frame).
+  scene.fog = new THREE.Fog(0x8fc6f0, isSmallScreen ? 24 : 20, isSmallScreen ? 70 : 55);
 
   // Base camera pose (before parallax/scroll offsets are applied each frame).
-  // Portrait phones get a pulled-back, wider-angle framing: the desktop pose
-  // crops the street canyon to a sliver on a tall narrow viewport.
+  // Desktop: eye-level-ish documentary framing that sees both sidewalks and
+  // the crosswalk. Portrait phones get a pulled-back, wider-angle framing.
   const BASE_CAM_POS = isSmallScreen
     ? new THREE.Vector3(0, 4.2, 16)
-    : new THREE.Vector3(0, 2.6, 8.2);
+    : new THREE.Vector3(0, 2.7, 9.2);
   const BASE_CAM_TARGET = isSmallScreen
     ? new THREE.Vector3(0, 1.9, -4)
-    : new THREE.Vector3(0, 1.1, 0);
+    : new THREE.Vector3(0, 1.15, -0.5);
   // Scroll-pulled-back pose — camera rises and retreats as the visitor scrolls past the hero.
   const SCROLL_CAM_POS = isSmallScreen
     ? new THREE.Vector3(0, 7, 19)
@@ -349,18 +535,25 @@ function initHeroSilhouette() {
   const DRIFT_AMPLITUDE_Y = 0.18;
   const DRIFT_SPEED = 0.06;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 60 : 45, width / height, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 60 : 45, width / height, 0.1, 120);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
-  // Capped at 2x — plenty of geometry here already; rendering at full retina
-  // resolution beyond 2x was a needless GPU cost with no visible gain.
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setSize(width, height);
   // Phones cap at 1.5x: full retina DPR doubles the fill cost of the skinned
   // crowd for detail that isn't visible at street distance.
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isSmallScreen ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // Film-look grading; sky/sun/moon/star materials opt out (toneMapped=false)
+  // so the calibrated day/night color stops stay exact.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.18;
+  // True directional shadows on desktop — the single biggest realism upgrade.
+  // Phones use per-figure contact blobs instead (shadow pass + skinned crowd
+  // is too heavy for mobile GPUs).
+  renderer.shadowMap.enabled = !isSmallScreen;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.domElement.style.cursor = "default";
   mount.appendChild(renderer.domElement);
 
@@ -371,7 +564,20 @@ function initHeroSilhouette() {
   // its color/intensity/position are re-driven every frame by the time-of-day.
   const sun = new THREE.DirectionalLight(0xffffff, 1.0);
   sun.position.set(4, 8, 6);
+  if (!isSmallScreen) {
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -18;
+    sun.shadow.camera.right = 18;
+    sun.shadow.camera.top = 20;
+    sun.shadow.camera.bottom = -18;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 60;
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
+  }
   scene.add(sun);
+  scene.add(sun.target);
   const fill = new THREE.DirectionalLight(0xffffff, 0.28);
   fill.position.set(-5, 3, -4);
   scene.add(fill);
@@ -379,10 +585,11 @@ function initHeroSilhouette() {
   scene.add(hemi);
 
   // ---- Sky backdrop — a plane whose color is driven by real local time ----
-  const bgGeo = new THREE.PlaneGeometry(120, 60);
+  const bgGeo = new THREE.PlaneGeometry(140, 70);
   const bgMat = new THREE.MeshBasicMaterial({ color: 0x8fc6f0, depthWrite: false, fog: false });
+  bgMat.toneMapped = false;
   const bgMesh = new THREE.Mesh(bgGeo, bgMat);
-  bgMesh.position.set(0, 10, -26);
+  bgMesh.position.set(0, 12, -30);
   scene.add(bgMesh);
 
   // ---- Stars: small white points that fade in at night only ----
@@ -391,104 +598,210 @@ function initHeroSilhouette() {
   const starPositions = new Float32Array(STAR_COUNT * 3);
   for (let i = 0; i < STAR_COUNT; i++) {
     const x = (Math.random() - 0.5) * 70;
-    const y = 2.5 + Math.random() * 8; // keep inside the visible sky band
+    const y = 2.5 + Math.random() * 9; // keep inside the visible sky band
     const z = -24 - Math.random() * 10;
     starPositions.set([x, y, z], i * 3);
   }
   starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
-  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, transparent: true, opacity: 0, depthWrite: false });
+  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, transparent: true, opacity: 0, depthWrite: false, fog: false });
+  starMat.toneMapped = false;
   const stars = new THREE.Points(starGeo, starMat);
   scene.add(stars);
 
-  // ---- Sun disc with soft glow halo ----
-  const sunGeo = new THREE.CircleGeometry(1.7, 40);
+  // Soft radial texture shared by celestial halos, contact shadows and lamp
+  // pools — a feathered gradient, never a hard-edged disc.
+  const radialTex = makeRadialTexture();
+
+  // ---- Sun disc — small hot core + feathered atmospheric glow ----
+  const sunGeo = new THREE.CircleGeometry(1.05, 40);
   const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff1c2, transparent: true, opacity: 1, depthWrite: false, fog: false });
+  sunMat.toneMapped = false;
   const sunDisc = new THREE.Mesh(sunGeo, sunMat);
-  const sunHaloGeo = new THREE.CircleGeometry(3.8, 40);
-  const sunHaloMat = new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.35, depthWrite: false, fog: false });
-  const sunHalo = new THREE.Mesh(sunHaloGeo, sunHaloMat);
+  const sunHaloMat = new THREE.MeshBasicMaterial({ map: radialTex, color: 0xffd98a, transparent: true, opacity: 0.55, depthWrite: false, fog: false });
+  sunHaloMat.toneMapped = false;
+  const sunHalo = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 7.5), sunHaloMat);
   sunHalo.position.z = -0.05;
   sunDisc.add(sunHalo);
   scene.add(sunDisc);
 
-  // ---- Moon disc with cool glow halo ----
-  const moonGeo = new THREE.CircleGeometry(1.35, 40);
+  // ---- Moon disc with feathered cool glow ----
+  const moonGeo = new THREE.CircleGeometry(0.95, 40);
   const moonMat = new THREE.MeshBasicMaterial({ color: 0xf3f6ff, transparent: true, opacity: 1, depthWrite: false, fog: false });
+  moonMat.toneMapped = false;
   const moonDisc = new THREE.Mesh(moonGeo, moonMat);
-  const moonHaloGeo = new THREE.CircleGeometry(3.0, 40);
-  const moonHaloMat = new THREE.MeshBasicMaterial({ color: 0xaebeff, transparent: true, opacity: 0.3, depthWrite: false, fog: false });
-  const moonHalo = new THREE.Mesh(moonHaloGeo, moonHaloMat);
+  const moonHaloMat = new THREE.MeshBasicMaterial({ map: radialTex, color: 0xaebeff, transparent: true, opacity: 0.5, depthWrite: false, fog: false });
+  moonHaloMat.toneMapped = false;
+  const moonHalo = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), moonHaloMat);
   moonHalo.position.z = -0.05;
   moonDisc.add(moonHalo);
   scene.add(moonDisc);
 
-  // ---- Street / ground plane ----
-  const groundGeo = new THREE.PlaneGeometry(40, 40);
+  // ---- Ground / road / sidewalks / curbs ----
+  const groundGeo = new THREE.PlaneGeometry(70, 70);
   const groundMat = new THREE.MeshStandardMaterial({ color: 0x8f887e, roughness: 1 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = !isSmallScreen;
   scene.add(ground);
 
-  // Street strip down the middle with faint crosswalk hints — subtle, not cartoonish.
-  const streetGeo = new THREE.PlaneGeometry(6, 40);
-  const streetMat = new THREE.MeshStandardMaterial({ color: 0x33343a, roughness: 0.95 });
-  const street = new THREE.Mesh(streetGeo, streetMat);
-  street.rotation.x = -Math.PI / 2;
-  street.position.y = 0.002;
-  scene.add(street);
+  const roadMat = new THREE.MeshStandardMaterial({ map: makeAsphaltTexture(), roughness: 0.98 });
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, 44), roadMat);
+  road.rotation.x = -Math.PI / 2;
+  road.position.y = 0.002;
+  road.receiveShadow = !isSmallScreen;
+  scene.add(road);
 
-  const crosswalkGroup = new THREE.Group();
-  const crosswalkStripeGeo = new THREE.PlaneGeometry(0.5, 4.2);
-  const crosswalkMat = new THREE.MeshBasicMaterial({ color: 0xe8e4da, transparent: true, opacity: 0.55 });
-  for (let i = -2; i <= 2; i++) {
-    const stripe = new THREE.Mesh(crosswalkStripeGeo, crosswalkMat);
-    stripe.rotation.x = -Math.PI / 2;
-    stripe.position.set(i * 0.7, 0.003, -3);
-    crosswalkGroup.add(stripe);
+  // Center dashed lane line — merged into one mesh.
+  const dashGeos = [];
+  for (let z = -14; z <= 10; z += 3) {
+    const dash = new THREE.PlaneGeometry(0.08, 1.2);
+    dash.rotateX(-Math.PI / 2);
+    dash.translate(0, 0.004, z);
+    dashGeos.push(dash);
   }
-  scene.add(crosswalkGroup);
+  const dashMat = new THREE.MeshBasicMaterial({ color: 0xdad5c8, transparent: true, opacity: 0.32 });
+  scene.add(new THREE.Mesh(mergeGeometries(dashGeos), dashMat));
 
-  // Faint sidewalk-seam grid lines on top of the ground.
-  const gridHelper = new THREE.GridHelper(40, 20, 0xbdb6a8, 0xcfc9bd);
-  gridHelper.position.y = 0.001;
-  gridHelper.material.transparent = true;
-  gridHelper.material.opacity = 0.4;
-  scene.add(gridHelper);
+  const pavementMat = new THREE.MeshStandardMaterial({ map: makePavementTexture(), roughness: 0.95 });
+  [-1, 1].forEach((side) => {
+    const walkway = new THREE.Mesh(new THREE.BoxGeometry(2.8, SIDEWALK_H, 44), pavementMat);
+    walkway.position.set(side * (ROAD_HALF + 0.12 + 1.4), SIDEWALK_H / 2, 0);
+    walkway.receiveShadow = !isSmallScreen;
+    scene.add(walkway);
+    const curb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, SIDEWALK_H + 0.02, 44),
+      new THREE.MeshStandardMaterial({ color: 0x9a958b, roughness: 0.9 })
+    );
+    curb.position.set(side * (ROAD_HALF + 0.07), (SIDEWALK_H + 0.02) / 2, 0);
+    curb.receiveShadow = !isSmallScreen;
+    scene.add(curb);
+  });
 
-  // ---- Downtown skyline flanking the street, both sides ----
-  const buildingRowZ = [-7, -11];
+  // ---- Crosswalk (zebra bars span the road at CROSS_Z) ----
+  const crosswalkMat = new THREE.MeshBasicMaterial({ color: 0xe8e4da, transparent: true, opacity: 0.6 });
+  const zebraGeos = [];
+  for (let i = -2; i <= 2; i++) {
+    const bar = new THREE.PlaneGeometry(ROAD_HALF * 2 - 0.2, 0.42);
+    bar.rotateX(-Math.PI / 2);
+    bar.translate(0, 0.006, CROSS_Z + i * 0.78);
+    zebraGeos.push(bar);
+  }
+  scene.add(new THREE.Mesh(mergeGeometries(zebraGeos), crosswalkMat));
+
+  // ---- Pedestrian signals: one pole each side of the crosswalk ----
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x24262b, roughness: 0.7, metalness: 0.3 });
+  const signalRedMats = [];
+  const signalGreenMats = [];
+  [[CURB_WAIT_X + 0.25, CROSS_Z - 1.35], [-(CURB_WAIT_X + 0.25), CROSS_Z + 1.35]].forEach(([px, pz]) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 2.6, 8), poleMat);
+    pole.position.y = 1.3;
+    g.add(pole);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.42, 0.14), poleMat);
+    head.position.y = 2.55;
+    g.add(head);
+    const mkLight = (color, y) => {
+      const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.15 });
+      m.toneMapped = false;
+      // Small light plate on both faces so it reads from every angle.
+      [1, -1].forEach((f) => {
+        const dot = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.11), m);
+        dot.position.set(0, y, f * 0.075);
+        if (f < 0) dot.rotation.y = Math.PI;
+        g.add(dot);
+      });
+      return m;
+    };
+    signalRedMats.push(mkLight(0xff5449, 2.66));
+    signalGreenMats.push(mkLight(0x4dff88, 2.45));
+    g.position.set(px, SIDEWALK_H, pz);
+    scene.add(g);
+  });
+
+  // ---- Streetlamps: slim poles with warm heads + night light pools ----
+  const lampGlowMats = [];
+  const lampPoolMats = [];
+  [-9, -3, 3].forEach((lz) => {
+    [-1, 1].forEach((side) => {
+      const g = new THREE.Group();
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 3.1, 8), poleMat);
+      pole.position.y = 1.55;
+      g.add(pole);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), poleMat);
+      arm.position.set(-side * 0.25, 3.08, 0);
+      g.add(arm);
+      const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe2b0, transparent: true, opacity: 0 });
+      bulbMat.toneMapped = false;
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), bulbMat);
+      bulb.position.set(-side * 0.5, 3.02, 0);
+      g.add(bulb);
+      lampGlowMats.push(bulbMat);
+      const poolMat = new THREE.MeshBasicMaterial({
+        map: radialTex, color: 0xffc98a, transparent: true, opacity: 0, depthWrite: false,
+      });
+      poolMat.toneMapped = false;
+      const pool = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), poolMat);
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.set(-side * 0.5, 0.012 - SIDEWALK_H, 0);
+      g.add(pool);
+      lampPoolMats.push(poolMat);
+      g.position.set(side * 2.6, SIDEWALK_H, lz);
+      scene.add(g);
+    });
+  });
+
+  // ---- Planters with clipped dark shrubs along the sidewalk back edge ----
+  const planterMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
+  const bushMat = new THREE.MeshStandardMaterial({ color: 0x2f4a33, roughness: 1 });
+  [-6, 0, 6].forEach((pz) => {
+    [-1, 1].forEach((side) => {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.34, 0.7), planterMat);
+      box.position.set(side * 4.7, SIDEWALK_H + 0.17, pz);
+      box.castShadow = !isSmallScreen;
+      scene.add(box);
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), bushMat);
+      bush.scale.y = 0.72;
+      bush.position.set(side * 4.7, SIDEWALK_H + 0.5, pz);
+      bush.castShadow = !isSmallScreen;
+      scene.add(bush);
+    });
+  });
+
+  // ---- The towers: two near rows flanking the street + a far skyline row ----
   const buildingEdgeMaterials = [];
   const buildingFacadeMaterials = [];
   const allWindowDots = [];
   let paletteCounter = 0;
   [-1, 1].forEach((side) => {
-    buildingRowZ.forEach((z, i) => {
-      for (let j = 0; j < BUILDINGS_PER_ROW; j++) {
-        const w = 2.2 + Math.random() * 1.6;
-        const h = 3 + Math.random() * (5 + i * 2.5);
-        const d = 2.2 + Math.random() * 1.6;
-        const building = createBuilding(w, h, d, paletteCounter++);
-        building.mesh.position.x = side * (5.5 + j * 3.2 + Math.random() * 0.4);
-        building.mesh.position.z = z + (Math.random() - 0.5) * 1.2;
-        scene.add(building.mesh);
-        buildingFacadeMaterials.push(building.facadeMaterial);
-        if (building.windowDotMaterial) allWindowDots.push(building.windowDotMaterial);
-
-        // Subtle edge line per building for crisp definition against the sky.
-        const edgeGeo = new THREE.EdgesGeometry(building.mesh.geometry);
-        const edgeMat = new THREE.LineBasicMaterial({ color: 0x2a2620, transparent: true, opacity: 0.25 });
-        const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
-        building.mesh.add(edgeLines);
-        buildingEdgeMaterials.push(edgeMat);
+    [[-7, 4.5, 3.5], [-11, 7, 4.5]].forEach(([z, hBase, hVar]) => {
+      for (let j = 0; j < 2; j++) {
+        const w = 2.4 + Math.random() * 1.2;
+        const h = hBase + Math.random() * hVar;
+        const d = 2.4 + Math.random() * 0.9;
+        const tower = createTower(w, h, d, paletteCounter++, -side);
+        tower.group.position.x = side * (6.0 + j * 3.5 + Math.random() * 0.4);
+        tower.group.position.z = z + (Math.random() - 0.5) * 1.2;
+        scene.add(tower.group);
+        buildingFacadeMaterials.push(tower.facadeMaterial);
+        buildingEdgeMaterials.push(tower.edgeMaterial);
+        if (tower.windowDotMaterial) allWindowDots.push(tower.windowDotMaterial);
       }
     });
   });
+  // Far skyline slabs — fogged silhouettes that give the district depth.
+  [-13, -6.5, 0.5, 7, 13].forEach((fx) => {
+    const h = 9 + Math.random() * 5;
+    const tower = createTower(2.2 + Math.random() * 1.4, h, 2.4, paletteCounter++, 0);
+    tower.group.position.set(fx + (Math.random() - 0.5), 0, -17 - Math.random() * 2.5);
+    scene.add(tower.group);
+    buildingFacadeMaterials.push(tower.facadeMaterial);
+    buildingEdgeMaterials.push(tower.edgeMaterial);
+    if (tower.windowDotMaterial) allWindowDots.push(tower.windowDotMaterial);
+  });
 
   // ---------------------------------------------------------------------
-  // Human figures: try to load the real rigged Soldier.glb model; each clone
-  // gets its own AnimationMixer playing "Walk" and a tee plane parented to a
-  // spine bone. If the GLTFLoader fails for any reason, fall back to the
-  // stylized procedural figure so the hero never shows a blank/broken scene.
+  // Human cast. Real rigged Mixamo humans; stylized procedural fallback if
+  // any GLB fails so the hero never shows a blank scene.
   // ---------------------------------------------------------------------
   const npcs = [];
   const clock = new THREE.Clock();
@@ -668,7 +981,7 @@ function initHeroSilhouette() {
     const s = desiredHeight / rigHeight;
     group.scale.setScalar(s);
     // Feet flat on pavement: toe bone sits ~2cm above the sole.
-    root.position.y = -(toeY - 0.02 * rigHeight) ;
+    root.position.y = -(toeY - 0.02 * rigHeight);
     return s;
   }
 
@@ -680,6 +993,8 @@ function initHeroSilhouette() {
   function loadImage(url) {
     return new Promise((resolve) => imageLoader.load(url, resolve, undefined, () => resolve(null)));
   }
+
+  const contactShadowMats = [];
 
   function buildHuman(spec, base, walkClip, teeImage, baseShirtImage) {
     const cloned = skeletonClone(base.scene);
@@ -699,6 +1014,24 @@ function initHeroSilhouette() {
       });
     }
 
+    if (!isSmallScreen) {
+      // Desktop: figures cast true sun shadows.
+      cloned.traverse((o) => {
+        if (o.isMesh || o.isSkinnedMesh) o.castShadow = true;
+      });
+    } else {
+      // Mobile: soft contact blob grounds the figure without a shadow pass.
+      const blobMat = new THREE.MeshBasicMaterial({
+        map: radialTex, color: 0x000000, transparent: true, opacity: 0.24, depthWrite: false,
+      });
+      const blob = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.55), blobMat);
+      blob.rotation.x = -Math.PI / 2;
+      blob.position.y = 0.015;
+      blob.scale.setScalar(1 / Math.max(0.0001, sizeScale));
+      group.add(blob);
+      contactShadowMats.push(blobMat);
+    }
+
     const mixer = new THREE.AnimationMixer(cloned);
     const walkAction = walkClip ? mixer.clipAction(walkClip) : null;
     if (walkAction) {
@@ -709,13 +1042,8 @@ function initHeroSilhouette() {
     return { group, mixer, cloned, walkAction, sizeScale, isStylized: false };
   }
 
-  // Street lanes for human walkers: straight walks up/down the street at
-  // stride-matched speed, wrapping around out of frame — much more natural
-  // than orbiting a point.
-  const WALK_Z_MIN = -13;
-  const WALK_Z_MAX = isSmallScreen ? 9 : 5;
-  function randomLane() {
-    return (Math.random() * 2 - 1) * (isSmallScreen ? 2.2 : 3.0);
+  function randomLane(side) {
+    return side * (LANE_MIN + Math.random() * (LANE_MAX - LANE_MIN));
   }
 
   function spawnNpcCommon(fig, index, opts) {
@@ -754,11 +1082,11 @@ function initHeroSilhouette() {
     }
   }
 
-  // ---- "Normal day" behavior engine ----
-  // Every walker runs a tiny state machine (walk / pause / turn / event) with
-  // eased acceleration so nobody starts or stops like a machine. The walk
-  // clip's playback rate is slaved to actual ground speed, keeping stride
-  // physically glued to the pavement at every velocity.
+  // ---- Rush-hour behavior engine ----
+  // Every walker runs a state machine (walk / pause / turn / event /
+  // waitSignal / cross) with eased acceleration so nobody starts or stops
+  // like a machine. The walk clip's playback rate is slaved to actual ground
+  // speed, keeping stride physically glued to the pavement at every velocity.
   let eventClips = {}; // per-prefix retargeted { trip, sing }
 
   function startEvent(npc, t, kind) {
@@ -793,7 +1121,14 @@ function initHeroSilhouette() {
     npc.targetSpeed = npc.cruise;
   }
 
-  function stepHuman(npc, t, dt) {
+  function beginCross(npc) {
+    npc.state = "cross";
+    npc.crossDirX = -npc.side;
+    npc.targetSpeed = npc.cruise * 1.12; // people cross briskly
+    npc.zCrossDrift = (Math.random() - 0.5) * 0.15;
+  }
+
+  function stepHuman(npc, t, dt, sig) {
     // Eased speed — nobody snaps between standing and full stride.
     npc.speed += (npc.targetSpeed - npc.speed) * Math.min(1, 3.2 * dt);
     // Stride sync: clip rate follows true ground speed (physics, not loops).
@@ -802,33 +1137,60 @@ function initHeroSilhouette() {
     if (npc.state === "walk") {
       npc.targetSpeed = npc.cruise;
       npc.zPos += npc.dir * npc.speed * dt;
+      // Drift back to the personal lane (also re-blends after a crossing).
+      npc.xPos += ((npc.lane + Math.sin(npc.zPos * 0.5 + npc.walkPhase) * 0.16) - npc.xPos) * Math.min(1, 4 * dt);
+
+      // Crosswalk decision: commuters near the crosswalk may head across —
+      // immediately on a fresh green, or gather at the curb through a red.
+      if (npc.canCross && t > npc.crossCooldownUntil && Math.abs(npc.zPos - CROSS_Z) < 0.5) {
+        npc.crossCooldownUntil = t + 20 + Math.random() * 30;
+        if (Math.random() < 0.55) {
+          if (sig.green && sig.timeLeft > 4.5) {
+            beginCross(npc);
+          } else {
+            npc.state = "waitSignal";
+            npc.waitStart = t;
+            npc.waitFromRot = npc.group.rotation.y;
+            // Spread the waiting cluster: along the curb AND a step back for
+            // some — a loose human huddle, not a stacked queue.
+            npc.crossJitter = (Math.random() - 0.5) * 2.2;
+            npc.waitX = CURB_WAIT_X + Math.random() * 0.55;
+            npc.targetSpeed = 0;
+          }
+        }
+      }
 
       // Reached the end of the block: slow down and turn around like a person.
-      if ((npc.dir > 0 && npc.zPos > WALK_Z_MAX) || (npc.dir < 0 && npc.zPos < WALK_Z_MIN)) {
+      if (npc.state === "walk" && ((npc.dir > 0 && npc.zPos > WALK_Z_MAX) || (npc.dir < 0 && npc.zPos < WALK_Z_MIN))) {
         npc.state = "turn";
         npc.turnStart = t;
         npc.turnFrom = npc.dir > 0 ? 0 : Math.PI;
         npc.turnTo = npc.dir > 0 ? Math.PI : 0;
         npc.dir *= -1;
         npc.targetSpeed = npc.cruise * 0.3;
-      } else if (t > npc.eventCooldownUntil) {
-        // Street-life moments, framerate-independent probabilities.
-        if (Math.random() < dt / 75) startEvent(npc, t, "trip");
-        else if (Math.random() < dt / 60) startEvent(npc, t, "sing");
-        else if (Math.random() < dt / 45) {
-          // Just... stop for a moment. People do that.
+      } else if (npc.state === "walk" && t > npc.eventCooldownUntil) {
+        // Street-life moments, framerate-independent probabilities. Office
+        // crowds are graceful: trips and singing are rare; pauses (a phone
+        // buzz, a thought) are the everyday beat.
+        if (Math.random() < dt / 90) startEvent(npc, t, "trip");
+        else if (Math.random() < dt / 110) startEvent(npc, t, "sing");
+        else if (Math.random() < dt * npc.pauseChance) {
           npc.state = "pause";
-          npc.pauseUntil = t + 1.2 + Math.random() * 2;
+          npc.pauseUntil = t + npc.pauseDur[0] + Math.random() * (npc.pauseDur[1] - npc.pauseDur[0]);
           npc.targetSpeed = 0;
           npc.eventCooldownUntil = npc.pauseUntil + 15 + Math.random() * 20;
         }
       }
-      npc.group.rotation.y = (npc.dir > 0 ? 0 : Math.PI) + Math.sin(t * 0.7 + npc.walkPhase) * 0.05;
+      if (npc.state === "walk" || npc.state === "pause") {
+        // Rigs face +Z at rotation 0 (verified empirically — do NOT flip).
+        npc.group.rotation.y = (npc.dir > 0 ? 0 : Math.PI) + Math.sin(t * 0.7 + npc.walkPhase) * 0.05;
+      }
     } else if (npc.state === "turn") {
       const k = Math.min(1, (t - npc.turnStart) / 0.8);
       // Ease the body around; keep drifting forward slightly mid-turn.
-      npc.group.rotation.y = npc.turnFrom + (npc.turnTo - npc.turnFrom) * (k * k * (3 - 2 * k));
+      npc.group.rotation.y = npc.turnFrom + (npc.turnTo - npc.turnFrom) * smoothstep01(k);
       npc.zPos += npc.dir * npc.speed * dt * 0.4;
+      npc.xPos += (npc.lane - npc.xPos) * Math.min(1, 2 * dt);
       if (k >= 1) {
         npc.state = "walk";
         npc.targetSpeed = npc.cruise;
@@ -837,6 +1199,35 @@ function initHeroSilhouette() {
       if (t > npc.pauseUntil) {
         npc.state = "walk";
         npc.targetSpeed = npc.cruise;
+      }
+      npc.group.rotation.y = (npc.dir > 0 ? 0 : Math.PI) + Math.sin(t * 0.7 + npc.walkPhase) * 0.05;
+    } else if (npc.state === "waitSignal") {
+      // Turn to face the road, shuffle up to the curb, wait for the green.
+      npc.targetSpeed = 0;
+      const k = Math.min(1, (t - npc.waitStart) / 0.7);
+      const face = npc.side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      const to = npc.waitFromRot + shortestAngle(face - npc.waitFromRot);
+      npc.group.rotation.y = npc.waitFromRot + (to - npc.waitFromRot) * smoothstep01(k);
+      npc.xPos += (npc.side * npc.waitX - npc.xPos) * Math.min(1, 1.6 * dt);
+      npc.zPos += ((CROSS_Z + npc.crossJitter) - npc.zPos) * Math.min(1, 1.6 * dt);
+      // Green: release with a small random stagger — a human wave, not a drill.
+      if (sig.green && k >= 1 && Math.random() < dt * 3) beginCross(npc);
+    } else if (npc.state === "cross") {
+      npc.targetSpeed = npc.cruise * 1.12;
+      npc.xPos += npc.crossDirX * npc.speed * dt;
+      npc.zPos += npc.zCrossDrift * dt;
+      npc.group.rotation.y = (npc.crossDirX > 0 ? Math.PI / 2 : -Math.PI / 2) + Math.sin(t * 0.9 + npc.walkPhase) * 0.04;
+      if (npc.xPos * npc.crossDirX >= LANE_MIN) {
+        // Reached the far sidewalk: adopt it and rejoin the stream.
+        npc.side = -npc.side;
+        npc.lane = randomLane(npc.side);
+        npc.dir = Math.random() < 0.5 ? 1 : -1;
+        npc.state = "turn";
+        npc.turnStart = t;
+        npc.turnFrom = npc.group.rotation.y;
+        const to = npc.dir > 0 ? 0 : Math.PI;
+        npc.turnTo = npc.turnFrom + shortestAngle(to - npc.turnFrom);
+        npc.targetSpeed = npc.cruise * 0.5;
       }
     } else if (npc.state === "event") {
       if (npc.eventType === "trip") {
@@ -852,21 +1243,23 @@ function initHeroSilhouette() {
       if (t > npc.eventUntil) endEvent(npc);
     }
 
-    const wobble = Math.sin(npc.zPos * 0.5 + npc.walkPhase) * 0.18;
-    npc.group.position.set(npc.lane + wobble, 0, npc.zPos);
+    npc.group.position.set(npc.xPos, pavementY(npc.xPos), npc.zPos);
   }
 
-  // Personal space: walkers drift apart when they'd otherwise overlap.
+  // Personal space: same-sidewalk walkers drift apart when they'd overlap.
   function resolveCrowding(walkers, dt) {
     for (let i = 0; i < walkers.length; i++) {
       for (let j = i + 1; j < walkers.length; j++) {
         const a = walkers[i], b = walkers[j];
+        if (a.side !== b.side) continue;
         const dz = Math.abs(a.zPos - b.zPos);
         const dx = a.lane - b.lane;
-        if (dz < 1.1 && Math.abs(dx) < 0.8) {
+        if (dz < 1.0 && Math.abs(dx) < 0.7) {
           const push = (dx >= 0 ? 1 : -1) * 0.6 * dt;
-          a.lane = THREE.MathUtils.clamp(a.lane + push, -3.2, 3.2);
-          b.lane = THREE.MathUtils.clamp(b.lane - push, -3.2, 3.2);
+          const lo = a.side > 0 ? LANE_MIN : -LANE_MAX;
+          const hi = a.side > 0 ? LANE_MAX : -LANE_MIN;
+          a.lane = THREE.MathUtils.clamp(a.lane + push, lo, hi);
+          b.lane = THREE.MathUtils.clamp(b.lane - push, lo, hi);
         }
       }
     }
@@ -909,10 +1302,9 @@ function initHeroSilhouette() {
       sing: singClip && retargetClip(singClip, ANIM_SOURCE_PREFIX, prefix, root),
     });
 
-    // Walker mix: alternate Remy and the woman, each wearing a different tee.
-    const walkerCount = Math.max(2, FIGURE_COUNT - 1);
-    for (let i = 0; i < walkerCount; i++) {
-      const useWoman = i % 3 === 2; // every third walker is the woman
+    // ---- The commuter stream ----
+    for (let i = 0; i < WALKER_COUNT; i++) {
+      const useWoman = i % 3 === 2; // every third commuter is the woman
       const spec = useWoman ? PEOPLE.woman : PEOPLE.remy;
       const src = useWoman ? womanG : remyG;
       const shirtImg = useWoman ? womanShirtImg : remyShirtImg;
@@ -920,12 +1312,17 @@ function initHeroSilhouette() {
         ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
         : walkRemy;
       const fig = buildHuman(spec, src, walk, teeImages[i % teeImages.length], shirtImg);
-      // Per-figure pace variation, applied to BOTH clip playback and ground
-      // speed so stride length stays glued to the pavement.
-      const pace = 0.9 + Math.random() * 0.25;
       const baseSpeed = strideRaw > 0.01
         ? strideRaw * fig.sizeScale
         : 1.25 * (spec.height / 1.75); // fallback if the clip was exported in-place
+
+      // Archetypes: the coffee walker owns the morning at 60% pace; the
+      // phone-checker keeps stopping to read something important; everyone
+      // else strides with purpose at their own pace.
+      const isCoffee = i === 1;
+      const isPhone = i === 4;
+      const pace = isCoffee ? 0.58 : 0.92 + Math.random() * 0.28;
+      const side = i % 2 === 0 ? 1 : -1;
       const npc = spawnNpcCommon(fig, i, {
         rigPrefix: spec.prefix,
         strideSpeed: baseSpeed, // ground speed the clip covers at timeScale 1
@@ -933,55 +1330,91 @@ function initHeroSilhouette() {
         speed: 0, // everyone eases in from standstill
         targetSpeed: baseSpeed * pace,
         state: "walk",
-        lane: randomLane(),
-        dir: i % 2 === 0 ? 1 : -1,
+        side,
+        lane: randomLane(side),
+        dir: (i >> 1) % 2 === 0 ? 1 : -1,
         zPos: WALK_Z_MIN + Math.random() * (WALK_Z_MAX - WALK_Z_MIN),
+        canCross: !isCoffee && !isPhone && i % 2 === 0,
+        crossCooldownUntil: Math.random() * 25,
+        pauseChance: isPhone ? 1 / 12 : 1 / 45,
+        pauseDur: isPhone ? [4, 9] : [1.2, 3.2],
+        commuterIndex: i,
       });
+      npc.xPos = npc.lane;
       if (!eventClips[spec.prefix]) eventClips[spec.prefix] = buildLib(fig.cloned, spec.prefix);
-      void npc;
     }
     window.__EV_DEBUG.strideRaw = strideRaw;
 
-    // Street performer: loops the hip-hop clip at the street's edge.
+    // ---- Street performer: every district has one artist ----
     const danceClip = stripRootMotion(dancerG.animations[0]);
     const dancerFig = buildHuman(PEOPLE.dancer, dancerG, danceClip, null, null);
-    const dNpc = spawnNpcCommon(dancerFig, walkerCount, {
+    const dNpc = spawnNpcCommon(dancerFig, WALKER_COUNT, {
       rigPrefix: PEOPLE.dancer.prefix,
       static: true,
       alwaysAnimate: true,
     });
-    dNpc.group.position.set(isSmallScreen ? 1.7 : 2.6, 0, isSmallScreen ? 1.6 : 1.2);
+    dNpc.group.position.set(isSmallScreen ? 2.7 : 3.1, SIDEWALK_H, isSmallScreen ? 2.2 : 1.2);
     dNpc.group.rotation.y = Math.PI * 0.9; // face the camera, slightly angled
 
-    // A woman sitting on a street bench, laughing — her own Mixamo clip.
-    // Ordinary city life; nobody performs all the time.
+    // ---- Bench sitter: laughing at something on her phone ----
     const sitClip = stripRootMotion(womanG.animations[0]);
     const sitterFig = buildHuman(PEOPLE.woman, womanG, sitClip, teeImages[7 % teeImages.length], womanShirtImg);
-    const sitter = spawnNpcCommon(sitterFig, walkerCount + 1, {
+    const sitter = spawnNpcCommon(sitterFig, WALKER_COUNT + 1, {
       rigPrefix: PEOPLE.woman.prefix,
       static: true,
       alwaysAnimate: true,
     });
-    const benchX = isSmallScreen ? -2.1 : -3.1;
-    const benchZ = isSmallScreen ? 2.4 : 1.8;
-    sitter.group.position.set(benchX, 0.02, benchZ);
+    const benchX = isSmallScreen ? -2.9 : -3.8;
+    const benchZ = isSmallScreen ? 2.6 : 1.6;
+    sitter.group.position.set(benchX, SIDEWALK_H + 0.02, benchZ);
     sitter.group.rotation.y = Math.PI * 0.55; // angled toward the street
 
-    // Minimal dark bench under her — two slabs, matches the city furniture.
+    // Minimal dark bench under her — matches the district furniture.
     const benchMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
     const bench = new THREE.Group();
     const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.5), benchMat);
     seat.position.y = 0.42;
+    seat.castShadow = !isSmallScreen;
     bench.add(seat);
     [-0.6, 0.6].forEach((bx) => {
       const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.42, 0.42), benchMat);
       leg.position.set(bx, 0.21, 0);
       bench.add(leg);
     });
-    bench.position.set(benchX, 0, benchZ);
+    bench.position.set(benchX, SIDEWALK_H, benchZ);
     bench.rotation.y = sitter.group.rotation.y;
     scene.add(bench);
     window.__EV_DEBUG.sitter = sitter;
+
+    // ---- Sidewalk conversation pair (desktop only): two colleagues stopped
+    // mid-commute, gesturing at each other — the gesturing take reads as
+    // animated small talk when two people play it face to face, offset in
+    // time so they appear to trade the floor. ----
+    if (!isSmallScreen && singClip) {
+      const posA = new THREE.Vector3(-3.9, SIDEWALK_H, -3.3);
+      const posB = new THREE.Vector3(-3.25, SIDEWALK_H, -3.75);
+      const mkTalker = (spec, src, shirtImg, teeIdx, pos, other, timeOffset) => {
+        const clip = spec === PEOPLE.remy
+          ? singClip
+          : retargetClip(singClip, ANIM_SOURCE_PREFIX, spec.prefix, src.scene);
+        const fig = buildHuman(spec, src, clip, teeImages[teeIdx], shirtImg);
+        const npc = spawnNpcCommon(fig, teeIdx, {
+          rigPrefix: spec.prefix,
+          static: true,
+          alwaysAnimate: true,
+          isTalker: true,
+        });
+        npc.group.position.copy(pos);
+        npc.group.rotation.y = Math.atan2(other.x - pos.x, other.z - pos.z);
+        if (npc.walkAction) {
+          npc.walkAction.time = timeOffset;
+          npc.walkAction.timeScale = 0.85;
+        }
+        return npc;
+      };
+      mkTalker(PEOPLE.remy, remyG, remyShirtImg, 2, posA, posB, 0);
+      mkTalker(PEOPLE.woman, womanG, womanShirtImg, 5, posB, posA, 6.5);
+    }
   }).catch((err) => {
     console.warn("EL VYNCE hero: human models failed to load, using stylized fallback:", err);
     spawnStylizedFallbackCrowd();
@@ -998,7 +1431,7 @@ function initHeroSilhouette() {
     pointerY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
   });
 
-  // ---- Scroll-linked camera pull-back ----
+  // ---- Scroll-linked camera pull-back + brand stamp reveal ----
   let scrollProgress = 0;
   function updateScrollProgress() {
     if (!heroHeader) return;
@@ -1006,6 +1439,9 @@ function initHeroSilhouette() {
     const total = rect.height || window.innerHeight;
     const p = Math.min(1, Math.max(0, -rect.top / total));
     scrollProgress = p;
+    // The spinning stamp stays out of the hero's way; it fades in once the
+    // visitor scrolls into the catalogue.
+    document.body.classList.toggle("ev-stamp-in", p > 0.55);
   }
   window.addEventListener("scroll", updateScrollProgress, { passive: true });
   updateScrollProgress();
@@ -1019,12 +1455,13 @@ function initHeroSilhouette() {
     pointerVec.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     pointerVec.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointerVec, camera);
-    const targets = npcs.map((n) => n.group);
+    const visibleNpcs = npcs.filter((n) => !n.hidden);
+    const targets = visibleNpcs.map((n) => n.group);
     const hits = raycaster.intersectObjects(targets, true);
     if (!hits.length) return null;
     let obj = hits[0].object;
-    while (obj && !npcs.find((n) => n.group === obj)) obj = obj.parent;
-    return obj ? npcs.find((n) => n.group === obj) : null;
+    while (obj && !visibleNpcs.find((n) => n.group === obj)) obj = obj.parent;
+    return obj ? visibleNpcs.find((n) => n.group === obj) : null;
   }
 
   renderer.domElement.style.pointerEvents = "auto";
@@ -1055,10 +1492,25 @@ function initHeroSilhouette() {
     tabHidden = document.hidden;
   });
 
+  // ---- Pedestrian signal state (time-based, drives lights + crossings) ----
+  function signalStateAt(t) {
+    const c = ((t % SIGNAL_CYCLE) + SIGNAL_CYCLE) % SIGNAL_CYCLE;
+    return {
+      green: c < SIGNAL_GREEN,
+      timeLeft: c < SIGNAL_GREEN ? SIGNAL_GREEN - c : SIGNAL_CYCLE - c,
+    };
+  }
+  function updateSignalLights(sig) {
+    signalGreenMats.forEach((m) => { m.opacity = sig.green ? 1 : 0.12; });
+    signalRedMats.forEach((m) => { m.opacity = sig.green ? 0.12 : 1; });
+  }
+
   // ---- Day/night cycle state (real local clock driven) ----
   const skyColor = new THREE.Color();
   const groundColor = new THREE.Color();
   const lightColor = new THREE.Color();
+  const pavementTint = new THREE.Color();
+  const WHITE = new THREE.Color(0xffffff);
   let isNightNow = false;
 
   function updateDayNightCycle() {
@@ -1069,12 +1521,17 @@ function initHeroSilhouette() {
 
     skyColor.copy(sampleStops(SKY_STOPS, hour));
     bgMat.color.copy(skyColor);
+    // Haze matches the sky so distant towers melt into the morning air.
+    scene.fog.color.copy(skyColor);
     // Slight fog-like tint on hemisphere light ground color keeps buildings
     // grounded in the same palette as the sky at each hour.
     hemi.color.copy(skyColor);
 
     groundColor.copy(sampleStops(GROUND_STOPS, hour));
     groundMat.color.copy(groundColor);
+    // Sidewalks read a step lighter than raw ground at every hour.
+    pavementTint.copy(groundColor).lerp(WHITE, 0.42);
+    pavementMat.color.copy(pavementTint);
 
     // Sun arcs from horizon (east, sunrise) up and over to horizon (west, sunset);
     // moon arcs oppositely through the night. Arc angle maps each body's altitude
@@ -1085,14 +1542,14 @@ function initHeroSilhouette() {
     sunDisc.position.set(Math.cos(sunArc) * -CELESTIAL_X, 1.5 + Math.sin(sunArc) * 6.5, -22);
     sunDisc.visible = sunAlt > 0.001;
     sunDisc.material.opacity = Math.min(1, sunAlt * 2.2);
-    sunHaloMat.opacity = 0.3 + sunAlt * 0.25;
+    sunHaloMat.opacity = 0.45 + sunAlt * 0.3;
 
     let moonHour = hour < 6 ? hour + 24 : hour;
     const moonArc = THREE.MathUtils.clamp((moonHour - 18.5) / (30 - 18.5), 0, 1) * Math.PI;
     moonDisc.position.set(Math.cos(moonArc) * -CELESTIAL_X, 1.5 + Math.sin(moonArc) * 6.5, -22);
     moonDisc.visible = moonAlt > 0.001;
     moonDisc.material.opacity = Math.min(1, moonAlt * 2.2);
-    moonHaloMat.opacity = 0.22 + moonAlt * 0.2;
+    moonHaloMat.opacity = 0.35 + moonAlt * 0.3;
 
     // Stars fade in only once night is well underway (keeps a clean transition
     // through dusk before they appear).
@@ -1100,9 +1557,11 @@ function initHeroSilhouette() {
 
     // Directional "sun" light re-purposes as moonlight at night: warm color +
     // higher intensity by day, cool blue + dim by night, smooth blend between.
+    // Its position also drives the true shadow direction on desktop, so
+    // morning shadows stretch long and swing across the day.
     lightColor.copy(sampleStops(SUN_LIGHT_COLOR_STOPS, hour));
     sun.color.copy(lightColor);
-    sun.position.set(sunDisc.position.x * 0.3, Math.max(2, sunDisc.position.y * 0.6 + moonDisc.position.y * 0.4 * moonAlt), 6);
+    sun.position.set(sunDisc.position.x * 0.45, Math.max(3, sunDisc.position.y * 0.9 + moonDisc.position.y * 0.4 * moonAlt), 8);
     sun.intensity = 0.35 + sunAlt * 0.85 + moonAlt * 0.25;
     fill.intensity = 0.18 + sunAlt * 0.14;
     ambient.intensity = 0.28 + sunAlt * 0.32 + moonAlt * 0.12;
@@ -1114,10 +1573,41 @@ function initHeroSilhouette() {
       m.opacity = windowGlow * 0.95;
     });
 
+    // Streetlamps wake at dusk: warm heads + soft pools on the pavement.
+    const lampGlow = Math.max(0, (nightAmount - 0.35) / 0.65);
+    lampGlowMats.forEach((m) => { m.opacity = lampGlow; });
+    lampPoolMats.forEach((m) => { m.opacity = lampGlow * 0.3; });
+
+    // Contact blobs (mobile) soften as the sun drops.
+    const blobOpacity = 0.13 + sunAlt * 0.16;
+    contactShadowMats.forEach((m) => { m.opacity = blobOpacity; });
+
     // Building edge lines darken/lighten subtly with time of day for definition
     // against both bright sky and deep night.
-    const edgeOpacity = 0.2 + nightAmount * 0.25;
+    const edgeOpacity = 0.16 + nightAmount * 0.25;
     buildingEdgeMaterials.forEach((m) => { m.opacity = edgeOpacity; });
+
+    // The district breathes on the real clock: rush-hour streams at 6:30-10
+    // and 16:30-20, calmer midday, sparse late night.
+    if (usingGLTFHumans) {
+      const density = crowdDensityFor(hour);
+      const active = Math.max(2, Math.round(WALKER_COUNT * density));
+      npcs.forEach((npc) => {
+        if (npc.commuterIndex !== undefined) {
+          const hide = npc.commuterIndex >= active;
+          if (hide !== !!npc.hidden) {
+            npc.hidden = hide;
+            npc.group.visible = !hide;
+          }
+        } else if (npc.isTalker) {
+          const hide = density < 0.5;
+          if (hide !== !!npc.hidden) {
+            npc.hidden = hide;
+            npc.group.visible = !hide;
+          }
+        }
+      });
+    }
 
     // Toggle the header's is-night class only on real state changes, driving
     // CSS transitions in style.css for wordmark/paragraph/CTA legibility.
@@ -1153,8 +1643,6 @@ function initHeroSilhouette() {
     const nextPathT = pathT + 0.05;
     const nx = npc.centerX + Math.cos(nextPathT) * npc.pathRadiusX;
     const nz = npc.centerZ + Math.sin(nextPathT * 1.3) * npc.pathRadiusZ;
-    // Soldier.glb is authored facing -Z, so flip the heading by PI to make the
-    // body face the direction of travel (otherwise the crowd moonwalks).
     const heading = Math.atan2(nx - x, nz - z) + (npc.isStylized ? 0 : Math.PI);
 
     npc.group.position.set(x, 0, z);
@@ -1167,6 +1655,7 @@ function initHeroSilhouette() {
   // current time of day, no animation loop ----
   if (prefersReducedMotion) {
     updateDayNightCycle();
+    updateSignalLights(signalStateAt(0));
     renderer.render(scene, camera);
   } else {
     function animate() {
@@ -1177,12 +1666,20 @@ function initHeroSilhouette() {
       const dt = Math.min(clock.getDelta(), 0.1);
       const t = clock.elapsedTime;
 
-      resolveCrowding(npcs.filter((n) => !n.isStylized && !n.static), dt);
+      const sig = signalStateAt(t);
+      updateSignalLights(sig);
+      window.__EV_DEBUG.signal = sig;
+
+      resolveCrowding(
+        npcs.filter((n) => !n.isStylized && !n.static && !n.hidden && n.state === "walk"),
+        dt
+      );
       npcs.forEach((npc) => {
+        if (npc.hidden) return;
         let walkActive = 1;
         if (!npc.isStylized && !npc.static && npc.walkAction) {
           // Real humans: behavior state machine + stride-synced physics.
-          stepHuman(npc, t, dt);
+          stepHuman(npc, t, dt, sig);
         } else if (npc.isStylized) {
           walkActive = stepNpcMovement(npc, t, dt);
         }
@@ -1204,7 +1701,7 @@ function initHeroSilhouette() {
           npc.head.rotation.y = Math.sin(phase * 0.5) * 0.06;
         } else if (npc.mixer) {
           // Humans always tick: ground speed is expressed through the walk
-          // action's timeScale (stepHuman), events/dancer/sitter run at 1.
+          // action's timeScale (stepHuman); events/dancer/sitter run at 1.
           npc.mixer.update(dt);
         }
       });
@@ -1242,6 +1739,7 @@ function initHeroSilhouette() {
     camera.updateProjectionMatrix();
     if (prefersReducedMotion) {
       updateDayNightCycle();
+      updateSignalLights(signalStateAt(0));
       renderer.render(scene, camera);
     }
   }
