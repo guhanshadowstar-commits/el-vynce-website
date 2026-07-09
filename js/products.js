@@ -15,8 +15,8 @@ const EL_VYNCE_PRODUCTS = [
     colors: ["#000000", "#2b2b2b"],
     sizes: ["XS", "S", "M", "L", "XL"],
     images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuADIVdNC9tftf8b7kz0ixgjwuaYu7BHvrAsQEisJ0JqA7p4WOjrJ3x4-NtM6n1nKe_Y0bQacCgD4vuAGtTkeRVVyP8mhb7hPRpZ1Y9atRXdpMZOqLb7GqLwnYt_eNsscWDyiQKzktc-k104a0RsklKNQt8CpaNT5LH5NGUac4LzuYgldWngBIzaAQ2D4oC-1F2Srg9DVIMpnKpmVMiw_vMVLTJFPci4Scf2c4OwdMrpri9sJfgBwlsyjrgdAyQDUy9nMDruyG8IEMk",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuACa6Fi8Xa96_e9RDkwukOPPOaMuOOpar2I8E9QbfSzJiXZFnxQTKW87JaENqSOk8B0VRYOwgWcfhgPajds56C6-57g-eUmms2yRaQhrof3713BouiC7i92jwYPRt-zXZpEYaaP3JC89P2s0H3KT-M0A9ihmtjwTCN4eRcIpKSb0mPo1j5HFGwdqljijUyKgd_Ot95Ll6z5ceq8GNQCXllsRYjjH60nmwSi3eV52xVdw6c9gRWWp0RmN8a5J5t3Z_CnvtWOQ_wgD2M"
+      "images/products/ev-001-1.jpg",
+      "images/products/ev-001-2.jpg"
     ],
     description: "A made-to-order bandhgala in heavyweight wool-blend, cut with an architectural silhouette. Hand-finished button placket, structured shoulder, and a silhouette built for stillness rather than spectacle.",
     inStock: true,
@@ -164,8 +164,8 @@ const EL_VYNCE_PRODUCTS = [
     colors: ["#3a3a3a", "#000000"],
     sizes: ["S", "M", "L", "XL"],
     images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDIQPHqFHmhFgtacgqmt1Kt8eP7E2MEAQ1dOixJAkvdy-xsDY9k4_N3WIGn1Htgvna-QwBtEGMGbDSpti2mW1i-LJwROd8a_wtwdngGDJVnYH9pL7rGsZu55BwAuKz-1rg8zXC87iWGEpKMGQAukJua1zm__bGaETu-gagkS_Ltfd73XZWYls6HYFu6GGs9kce0BL3taIHZCybq6F-UjuBSI61Z1QqlsX4x5ZmUFvyCp29ElsSTa97Q1RLq2mWkMDsVhggZYeHMEnE",
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAofetXXv8YM2CTx-VVEdTtZlDuB4VGdG-GVmgnaUUYVnYQib72kZnal5bMQwXEVAU9Q752QFpZPGPDZg5koeZ7L3clDG3UFaov73YUp8B2UZ0p_51148regRq7iVj6t67gWgmSIZSAaM6PgYjFS7ZqeOuSfmN7YuMy69HFzdOZninci0jlIdX5TIwoiQw6MkZEP_Rvz2OfQ551DnebLoqliz727Rih4pb3ZXQClynd4ymftRvlSMmA7S5U2w5hKhffOAgskLt1rTI"
+      "images/products/ev-007-1.jpg",
+      "images/products/ev-007-2.jpg"
     ],
     description: "A heavy structural overcoat with hidden button placket, sculpted to hold its shape in motion and at rest. Limited Drop 03 production run.",
     inStock: true,
@@ -180,7 +180,7 @@ const EL_VYNCE_PRODUCTS = [
     colors: ["#000000"],
     sizes: ["One Size"],
     images: [
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDeP_hoPLlSKddEupBlXLfsk2wFC0vBAp6uDa0IAtFlpIQA7AgWF5599nQ65cmqxZOTzM742zlZASRWosAWzyDbooZWlQvGKbMTQy6ce99x18XQKcCsbI4lkV1a19B-ovA_qdyqqjprHBst8uKji-Z0gaeIyBWA-YIxSgUFRf8iX1u3rL-rQ7EFOy2rYxs2YnpiFHZCZ0lCJduu5q-sBu0siy3-JvdFbgrWC5hSuTT0pdq7qTXvBpeKLkrdEW4STmBwlygDv30NpHI"
+      "images/products/ev-008-1.jpg"
     ],
     description: "Matte black leather carry-all, hand-finished in small batches. Understated proportions built for daily structure.",
     inStock: true,
