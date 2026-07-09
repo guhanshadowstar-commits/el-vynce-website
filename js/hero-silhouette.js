@@ -986,7 +986,17 @@ function initHeroSilhouette() {
     const toeY = toe ? toe.getWorldPosition(new THREE.Vector3()).y : 0;
     const headY = headTop ? headTop.getWorldPosition(new THREE.Vector3()).y : 1.7;
     const rigHeight = Math.max(0.01, headY - toeY);
-    const s = desiredHeight / rigHeight;
+    let s = desiredHeight / rigHeight;
+    // Safety clamp: if bone-name matching ever grabs the wrong bone (e.g. an
+    // ambiguous "head"/"foot" substring match) the measured rigHeight can
+    // collapse toward the 0.01 floor above, exploding this scale to 100x+
+    // normal — a giant figure towering over the whole street. Real Mixamo
+    // exports (cm, m, or inch unit conventions) all land well inside
+    // [0.05, 3.0], so anything outside that is treated as a bad measurement.
+    if (s < 0.05 || s > 3.0) {
+      console.warn("EL VYNCE hero: fitHuman got an implausible scale (" + s.toFixed(3) + "), clamping — check bone names on this rig.");
+      s = THREE.MathUtils.clamp(s, 0.05, 3.0);
+    }
     group.scale.setScalar(s);
     // Feet flat on pavement: toe bone sits ~2cm above the sole.
     root.position.y = -(toeY - 0.02 * rigHeight);
