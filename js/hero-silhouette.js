@@ -884,12 +884,17 @@ function initHeroSilhouette() {
 
   // Pin the hips' X/Z to the first keyframe so clips play "in place" — path
   // code owns world movement; root motion in the clip would cause sliding.
-  // clampY (used only for the trip clip): the source mocap's vertical hip
-  // motion was never stripped, so an un-clamped upward excursion launched
-  // tripping figures into a floating mid-air pose while the group stayed
-  // pinned to the pavement. Clamping keeps the natural downward "falling"
-  // dip but forbids any rise above the standing reference height.
-  function stripRootMotion(clip, clampY) {
+  // Y is ALWAYS clamped to a safe band around the first keyframe (default
+  // ±0.5 raw units — generous enough for any natural bob/bounce/fall, but a
+  // hard ceiling against a figure's hips ever drifting far from the ground).
+  // This exists because the trip clip's un-stripped Y motion once launched
+  // figures into a floating mid-air pose; rather than special-case just that
+  // one clip, every clip gets the same guarantee so this class of bug (any
+  // clip, any browser/engine quirk) is structurally prevented, not patched
+  // one incident at a time. Pass a tighter/asymmetric [min, max] to allow a
+  // specific clip more room in one direction (e.g. trip's fall).
+  function stripRootMotion(clip, yRange) {
+    const [lo, hi] = yRange || [-0.5, 0.5];
     clip.tracks.forEach((tr) => {
       if (!/\.position$/.test(tr.name) || !/hips/i.test(tr.name)) return;
       const v = tr.values;
@@ -897,7 +902,7 @@ function initHeroSilhouette() {
       for (let i = 0; i < v.length; i += 3) {
         v[i] = x0;
         v[i + 2] = z0;
-        if (clampY) v[i + 1] = y0 + THREE.MathUtils.clamp(v[i + 1] - y0, -0.5, 0.08);
+        v[i + 1] = y0 + THREE.MathUtils.clamp(v[i + 1] - y0, lo, hi);
       }
     });
     return clip;
@@ -1308,9 +1313,10 @@ function initHeroSilhouette() {
     const remyShirtImg = getShirtImage(remyG, PEOPLE.remy.shirtMesh);
     const womanShirtImg = getShirtImage(womanG, PEOPLE.woman.shirtMesh);
 
-    // Event clip library, retargeted per rig prefix. clampY=true: this is the
-    // trip clip's raw mocap, which has un-stripped vertical hip motion.
-    const tripClip = tripG && stripRootMotion(tripG.animations[0], true);
+    // Event clip library, retargeted per rig prefix. Trip gets a wider,
+    // asymmetric band so the stumble's downward "falling" dip still reads,
+    // while still forbidding any upward float.
+    const tripClip = tripG && stripRootMotion(tripG.animations[0], [-0.5, 0.08]);
     const buildLib = (root, prefix) => ({
       trip: tripClip && retargetClip(tripClip, ANIM_SOURCE_PREFIX, prefix, root),
     });
