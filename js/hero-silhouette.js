@@ -836,7 +836,6 @@ function initHeroSilhouette() {
   };
   const ANIM_URLS = {
     trip: "models/people/anim-tripping.glb",
-    sing: "models/people/anim-singing.glb",
   };
   const ANIM_SOURCE_PREFIX = "mixamorig"; // donor clips use the base prefix
 
@@ -885,12 +884,21 @@ function initHeroSilhouette() {
 
   // Pin the hips' X/Z to the first keyframe so clips play "in place" — path
   // code owns world movement; root motion in the clip would cause sliding.
-  function stripRootMotion(clip) {
+  // clampY (used only for the trip clip): the source mocap's vertical hip
+  // motion was never stripped, so an un-clamped upward excursion launched
+  // tripping figures into a floating mid-air pose while the group stayed
+  // pinned to the pavement. Clamping keeps the natural downward "falling"
+  // dip but forbids any rise above the standing reference height.
+  function stripRootMotion(clip, clampY) {
     clip.tracks.forEach((tr) => {
       if (!/\.position$/.test(tr.name) || !/hips/i.test(tr.name)) return;
       const v = tr.values;
-      const x0 = v[0], z0 = v[2];
-      for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; }
+      const x0 = v[0], y0 = v[1], z0 = v[2];
+      for (let i = 0; i < v.length; i += 3) {
+        v[i] = x0;
+        v[i + 2] = z0;
+        if (clampY) v[i + 1] = y0 + THREE.MathUtils.clamp(v[i + 1] - y0, -0.5, 0.08);
+      }
     });
     return clip;
   }
@@ -1087,7 +1095,7 @@ function initHeroSilhouette() {
   // waitSignal / cross) with eased acceleration so nobody starts or stops
   // like a machine. The walk clip's playback rate is slaved to actual ground
   // speed, keeping stride physically glued to the pavement at every velocity.
-  let eventClips = {}; // per-prefix retargeted { trip, sing }
+  let eventClips = {}; // per-prefix retargeted { trip }
 
   function startEvent(npc, t, kind) {
     const lib = eventClips[npc.rigPrefix];
@@ -1102,9 +1110,7 @@ function initHeroSilhouette() {
     npc.state = "event";
     npc.eventType = kind;
     npc.eventStart = t;
-    // Singing gets faded out early (the full take is ~14s — too long to hold
-    // the street); the trip plays its full stumble-fall-recover arc.
-    npc.eventUntil = t + (kind === "sing" ? 7 : clip.duration - 0.35);
+    npc.eventUntil = t + clip.duration - 0.35; // plays its full stumble-fall-recover arc
     npc.eventAction = action;
     npc.eventCooldownUntil = npc.eventUntil + 25 + Math.random() * 40;
     return true;
@@ -1170,10 +1176,9 @@ function initHeroSilhouette() {
         npc.targetSpeed = npc.cruise * 0.3;
       } else if (npc.state === "walk" && t > npc.eventCooldownUntil) {
         // Street-life moments, framerate-independent probabilities. Office
-        // crowds are graceful: trips and singing are rare; pauses (a phone
-        // buzz, a thought) are the everyday beat.
+        // crowds are graceful: trips are rare; pauses (a phone buzz, a
+        // thought) are the everyday beat.
         if (Math.random() < dt / 90) startEvent(npc, t, "trip");
-        else if (Math.random() < dt / 110) startEvent(npc, t, "sing");
         else if (Math.random() < dt * npc.pauseChance) {
           npc.state = "pause";
           npc.pauseUntil = t + npc.pauseDur[0] + Math.random() * (npc.pauseDur[1] - npc.pauseDur[0]);
@@ -1270,9 +1275,8 @@ function initHeroSilhouette() {
     loadGLB(PEOPLE.woman.url),
     loadGLB(PEOPLE.dancer.url),
     loadGLB(ANIM_URLS.trip).catch(() => null),
-    loadGLB(ANIM_URLS.sing).catch(() => null),
     Promise.all(SHIRT_PRODUCTS.map((p) => loadImage(p.image))),
-  ]).then(([remyG, womanG, dancerG, tripG, singG, teeImages]) => {
+  ]).then(([remyG, womanG, dancerG, tripG, teeImages]) => {
     usingGLTFHumans = true;
 
     // Ground speed baked into the walk clip, measured before pinning the hips.
@@ -1294,12 +1298,11 @@ function initHeroSilhouette() {
     const remyShirtImg = getShirtImage(remyG, PEOPLE.remy.shirtMesh);
     const womanShirtImg = getShirtImage(womanG, PEOPLE.woman.shirtMesh);
 
-    // Event clip library, retargeted per rig prefix.
-    const tripClip = tripG && stripRootMotion(tripG.animations[0]);
-    const singClip = singG && stripRootMotion(singG.animations[0]);
+    // Event clip library, retargeted per rig prefix. clampY=true: this is the
+    // trip clip's raw mocap, which has un-stripped vertical hip motion.
+    const tripClip = tripG && stripRootMotion(tripG.animations[0], true);
     const buildLib = (root, prefix) => ({
       trip: tripClip && retargetClip(tripClip, ANIM_SOURCE_PREFIX, prefix, root),
-      sing: singClip && retargetClip(singClip, ANIM_SOURCE_PREFIX, prefix, root),
     });
 
     // ---- The commuter stream ----
@@ -1353,7 +1356,9 @@ function initHeroSilhouette() {
       static: true,
       alwaysAnimate: true,
     });
-    dNpc.group.position.set(isSmallScreen ? 2.7 : 3.1, SIDEWALK_H, isSmallScreen ? 2.2 : 1.2);
+    // z=0 sits squarely between the streetlamps at z=-3 and z=3 (3 units of
+    // clearance from each) so the dancer's arm swing never clips a pole.
+    dNpc.group.position.set(isSmallScreen ? 2.7 : 3.1, SIDEWALK_H, 0);
     dNpc.group.rotation.y = Math.PI * 0.9; // face the camera, slightly angled
 
     // ---- Bench sitter: laughing at something on her phone ----
@@ -1385,36 +1390,6 @@ function initHeroSilhouette() {
     bench.rotation.y = sitter.group.rotation.y;
     scene.add(bench);
     window.__EV_DEBUG.sitter = sitter;
-
-    // ---- Sidewalk conversation pair (desktop only): two colleagues stopped
-    // mid-commute, gesturing at each other — the gesturing take reads as
-    // animated small talk when two people play it face to face, offset in
-    // time so they appear to trade the floor. ----
-    if (!isSmallScreen && singClip) {
-      const posA = new THREE.Vector3(-3.9, SIDEWALK_H, -3.3);
-      const posB = new THREE.Vector3(-3.25, SIDEWALK_H, -3.75);
-      const mkTalker = (spec, src, shirtImg, teeIdx, pos, other, timeOffset) => {
-        const clip = spec === PEOPLE.remy
-          ? singClip
-          : retargetClip(singClip, ANIM_SOURCE_PREFIX, spec.prefix, src.scene);
-        const fig = buildHuman(spec, src, clip, teeImages[teeIdx], shirtImg);
-        const npc = spawnNpcCommon(fig, teeIdx, {
-          rigPrefix: spec.prefix,
-          static: true,
-          alwaysAnimate: true,
-          isTalker: true,
-        });
-        npc.group.position.copy(pos);
-        npc.group.rotation.y = Math.atan2(other.x - pos.x, other.z - pos.z);
-        if (npc.walkAction) {
-          npc.walkAction.time = timeOffset;
-          npc.walkAction.timeScale = 0.85;
-        }
-        return npc;
-      };
-      mkTalker(PEOPLE.remy, remyG, remyShirtImg, 2, posA, posB, 0);
-      mkTalker(PEOPLE.woman, womanG, womanShirtImg, 5, posB, posA, 6.5);
-    }
   }).catch((err) => {
     console.warn("EL VYNCE hero: human models failed to load, using stylized fallback:", err);
     spawnStylizedFallbackCrowd();
@@ -1593,18 +1568,11 @@ function initHeroSilhouette() {
       const density = crowdDensityFor(hour);
       const active = Math.max(2, Math.round(WALKER_COUNT * density));
       npcs.forEach((npc) => {
-        if (npc.commuterIndex !== undefined) {
-          const hide = npc.commuterIndex >= active;
-          if (hide !== !!npc.hidden) {
-            npc.hidden = hide;
-            npc.group.visible = !hide;
-          }
-        } else if (npc.isTalker) {
-          const hide = density < 0.5;
-          if (hide !== !!npc.hidden) {
-            npc.hidden = hide;
-            npc.group.visible = !hide;
-          }
+        if (npc.commuterIndex === undefined) return;
+        const hide = npc.commuterIndex >= active;
+        if (hide !== !!npc.hidden) {
+          npc.hidden = hide;
+          npc.group.visible = !hide;
         }
       });
     }
