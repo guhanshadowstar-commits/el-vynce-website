@@ -15,19 +15,23 @@
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 // Real product photography — front print of each tee. Cycled across every figure
 // so, over time, the full catalogue is represented walking the street.
+// Real product photography — front print of each tee. femaleOnly designs are
+// never composited onto the male rig (wardrobe logic in the walker loop).
+// ids match js/products.js so clicking a figure opens the exact tee worn.
 const SHIRT_PRODUCTS = [
   { image: "images/products/built-different-front.jpg", id: "ev-006b" },
   { image: "images/products/dare-to-be-different-front.jpg", id: "ev-006" },
-  { image: "images/products/frequency-front.jpg", id: "ev-007" },
-  { image: "images/products/im-just-a-girl-front.jpg", id: "ev-008" },
-  { image: "images/products/inner-noise-front.jpg", id: "ev-009" },
+  { image: "images/products/frequency-front.jpg", id: "ev-003" },
+  { image: "images/products/im-just-a-girl-front.jpg", id: "ev-006c", femaleOnly: true },
+  { image: "images/products/inner-noise-front.jpg", id: "ev-003b" },
   { image: "images/products/just-be-resilient-front.jpg", id: "ev-005" },
-  { image: "images/products/rebel-soul-front.jpg", id: "ev-010" },
+  { image: "images/products/rebel-soul-front.jpg", id: "ev-002" },
   { image: "images/products/style-pays-off-front.jpg", id: "ev-004" },
 ];
 
@@ -48,7 +52,10 @@ const LANE_MIN = 2.7;             // walkers keep to the sidewalk band
 const LANE_MAX = isSmallScreen ? 3.6 : 4.3;
 const CROSS_Z = 2.0;              // crosswalk position along the street
 const CURB_WAIT_X = 2.55;         // where waiters gather before crossing
-const WALK_Z_MIN = -13;
+// Phones: don't let walkers reach as far back — beyond z≈-9 the portrait
+// framing flattens depth so much that distant figures visually overlap the
+// far tower facades and read as "walking on the buildings".
+const WALK_Z_MIN = isSmallScreen ? -9 : -13;
 const WALK_Z_MAX = isSmallScreen ? 9 : 5;
 // Pedestrian signal: 10s walk, 16s wait — long enough for a crowd to gather
 // at the curb, so each green releases a satisfying crossing wave.
@@ -514,7 +521,10 @@ function initHeroSilhouette() {
   const scene = new THREE.Scene();
   scene.background = null;
   // Morning haze: distant towers melt into the sky color (updated per frame).
-  scene.fog = new THREE.Fog(0x8fc6f0, isSmallScreen ? 24 : 20, isSmallScreen ? 70 : 55);
+  // Mobile fog is TIGHTER than desktop (the camera sits further back on
+  // phones, so equal fog distances would leave the far skyline crisper than
+  // on desktop) — hazier far towers = clean depth separation from walkers.
+  scene.fog = new THREE.Fog(0x8fc6f0, 20, isSmallScreen ? 52 : 55);
 
   // Base camera pose (before parallax/scroll offsets are applied each frame).
   // Desktop: eye-level-ish documentary framing that sees both sidewalks and
@@ -789,10 +799,13 @@ function initHeroSilhouette() {
     });
   });
   // Far skyline slabs — fogged silhouettes that give the district depth.
-  [-13, -6.5, 0.5, 7, 13].forEach((fx) => {
+  // Every slot keeps |x| ≥ 5: the street corridor (road x ∈ [-2.2, 2.2])
+  // visually runs to the horizon, so a tower near x=0 reads as standing in
+  // the middle of the road. Jitter is outward-only for the same reason.
+  [-12.5, -8, -5, 5, 9.5].forEach((fx) => {
     const h = 9 + Math.random() * 5;
     const tower = createTower(2.2 + Math.random() * 1.4, h, 2.4, paletteCounter++, 0);
-    tower.group.position.set(fx + (Math.random() - 0.5), 0, -17 - Math.random() * 2.5);
+    tower.group.position.set(fx + Math.sign(fx) * Math.random() * 0.6, 0, -17 - Math.random() * 2.5);
     scene.add(tower.group);
     buildingFacadeMaterials.push(tower.facadeMaterial);
     buildingEdgeMaterials.push(tower.edgeMaterial);
@@ -1008,7 +1021,12 @@ function initHeroSilhouette() {
     return s;
   }
 
+  // Models are Draco-compressed (8.9MB → 4.0MB — the single biggest mobile
+  // load-time win). Decoder comes from the same CDN as the import-map three.
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/");
   const gltfLoader = new GLTFLoader();
+  gltfLoader.setDRACOLoader(dracoLoader);
   const imageLoader = new THREE.ImageLoader();
   function loadGLB(url) {
     return new Promise((resolve, reject) => gltfLoader.load(url, resolve, undefined, reject));
@@ -1321,6 +1339,16 @@ function initHeroSilhouette() {
       trip: tripClip && retargetClip(tripClip, ANIM_SOURCE_PREFIX, prefix, root),
     });
 
+    // Wardrobe logic: a design marked femaleOnly (the crop top) must never be
+    // composited onto the male rig. Men draw from the unisex list; women draw
+    // from a list with the female-only pieces FIRST so those designs still
+    // appear on the street (there are fewer women than men in the cast).
+    const outfits = SHIRT_PRODUCTS.map((p, idx) => ({ ...p, teeImage: teeImages[idx] }));
+    const maleOutfits = outfits.filter((o) => !o.femaleOnly);
+    const femaleOutfits = [...outfits.filter((o) => o.femaleOnly), ...outfits.filter((o) => !o.femaleOnly)];
+    let maleCursor = 0;
+    let femaleCursor = 0;
+
     // ---- The commuter stream ----
     for (let i = 0; i < WALKER_COUNT; i++) {
       const useWoman = i % 3 === 2; // every third commuter is the woman
@@ -1330,7 +1358,10 @@ function initHeroSilhouette() {
       const walk = useWoman
         ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
         : walkRemy;
-      const fig = buildHuman(spec, src, walk, teeImages[i % teeImages.length], shirtImg);
+      const outfit = useWoman
+        ? femaleOutfits[femaleCursor++ % femaleOutfits.length]
+        : maleOutfits[maleCursor++ % maleOutfits.length];
+      const fig = buildHuman(spec, src, walk, outfit.teeImage, shirtImg);
       const baseSpeed = strideRaw > 0.01
         ? strideRaw * fig.sizeScale
         : 1.25 * (spec.height / 1.75); // fallback if the clip was exported in-place
@@ -1360,6 +1391,7 @@ function initHeroSilhouette() {
         commuterIndex: i,
       });
       npc.xPos = npc.lane;
+      npc.productId = outfit.id; // click-through matches the tee actually worn
       if (!eventClips[spec.prefix]) eventClips[spec.prefix] = buildLib(fig.cloned, spec.prefix);
     }
     window.__EV_DEBUG.strideRaw = strideRaw;
@@ -1379,12 +1411,14 @@ function initHeroSilhouette() {
 
     // ---- Bench sitter: laughing at something on her phone ----
     const sitClip = stripRootMotion(womanG.animations[0]);
-    const sitterFig = buildHuman(PEOPLE.woman, womanG, sitClip, teeImages[7 % teeImages.length], womanShirtImg);
+    const sitterOutfit = outfits[7]; // Style Pays Off — unisex, matches her click-through
+    const sitterFig = buildHuman(PEOPLE.woman, womanG, sitClip, sitterOutfit.teeImage, womanShirtImg);
     const sitter = spawnNpcCommon(sitterFig, WALKER_COUNT + 1, {
       rigPrefix: PEOPLE.woman.prefix,
       static: true,
       alwaysAnimate: true,
     });
+    sitter.productId = sitterOutfit.id;
     const benchX = isSmallScreen ? -2.9 : -3.8;
     const benchZ = isSmallScreen ? 2.6 : 1.6;
     sitter.group.position.set(benchX, SIDEWALK_H + 0.02, benchZ);
