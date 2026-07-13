@@ -515,6 +515,40 @@ function initHeroSilhouette() {
   // fade in after scroll (style.css: body.ev-has-hero rules).
   document.body.classList.add("ev-has-hero");
 
+  // ---- Fail-safe poster fallback -----------------------------------------
+  // The scene must be INCAPABLE of showing a broken canvas. If WebGL is
+  // unavailable, the renderer throws, the GPU kills the context (routine on
+  // iPhones under memory pressure), a frame crashes, or sustained FPS is
+  // hopeless, the hero swaps to a full-bleed brand photograph — instantly,
+  // and remembered for the rest of the session so we don't crash-loop.
+  // Debug: ?evposter=1 forces the poster path for testing.
+  let posterActive = false;
+  function activatePosterFallback(reason) {
+    if (posterActive) return;
+    posterActive = true;
+    try { sessionStorage.setItem("ev-hero-poster", "1"); } catch (e) { /* private mode */ }
+    console.warn("EL VYNCE hero: poster fallback —", reason);
+    mount.innerHTML = "";
+    mount.style.cssText =
+      "background:#f4f3f1 url('images/hero-real.jpg') center 30%/cover no-repeat;" +
+      "filter:grayscale(1) contrast(1.04);";
+    if (heroHeader) heroHeader.classList.remove("is-night");
+  }
+  const params = new URLSearchParams(window.location.search);
+  const bootPoster = (() => {
+    try { return sessionStorage.getItem("ev-hero-poster") === "1"; } catch (e) { return false; }
+  })();
+  if (params.get("evposter") === "1" || bootPoster) {
+    activatePosterFallback(bootPoster ? "previous crash this session" : "forced via ?evposter=1");
+    return;
+  }
+  const glProbe = document.createElement("canvas");
+  if (!glProbe.getContext("webgl2") && !glProbe.getContext("webgl")) {
+    activatePosterFallback("WebGL not available");
+    return;
+  }
+  // -------------------------------------------------------------------------
+
   const width = mount.clientWidth || window.innerWidth;
   const height = mount.clientHeight || window.innerHeight;
 
@@ -549,11 +583,24 @@ function initHeroSilhouette() {
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+  // Mobile: antialias OFF and DPR capped at 1.25 — the two biggest fill-rate
+  // costs on phone GPUs (roughly doubles headroom on older iPhones); at
+  // street-scene distances the visual difference is negligible.
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: !isSmallScreen, alpha: true, powerPreference: "high-performance" });
+  } catch (err) {
+    activatePosterFallback("WebGLRenderer threw: " + err.message);
+    return;
+  }
   renderer.setSize(width, height);
-  // Phones cap at 1.5x: full retina DPR doubles the fill cost of the skinned
-  // crowd for detail that isn't visible at street distance.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isSmallScreen ? 1.5 : 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isSmallScreen ? 1.25 : 2));
+  // GPU killed our context (memory pressure — routine on iPhones): the canvas
+  // would otherwise silently freeze or go blank. Swap to the poster instead.
+  renderer.domElement.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    activatePosterFallback("WebGL context lost");
+  });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   // Film-look grading; sky/sun/moon/star materials opt out (toneMapped=false)
   // so the calibrated day/night color stops stay exact.
@@ -1537,6 +1584,11 @@ function initHeroSilhouette() {
   const pavementTint = new THREE.Color();
   const WHITE = new THREE.Color(0xffffff);
   let isNightNow = false;
+  // Lite mode: set by the FPS watchdog on struggling devices; read by the
+  // day/night cycle (crowd cap, stars off). Lives here at scene scope because
+  // the watchdog runs inside the animation branch below.
+  let liteMode = false;
+  const heroLite = () => liteMode;
 
   function updateDayNightCycle() {
     const hour = getLocalDayFraction(); // 0..24, visitor's real local time
@@ -1577,8 +1629,8 @@ function initHeroSilhouette() {
     moonHaloMat.opacity = 0.35 + moonAlt * 0.3;
 
     // Stars fade in only once night is well underway (keeps a clean transition
-    // through dusk before they appear).
-    starMat.opacity = Math.max(0, (nightAmount - 0.55) / 0.45) * 0.85;
+    // through dusk before they appear). Lite mode drops them entirely.
+    starMat.opacity = heroLite() ? 0 : Math.max(0, (nightAmount - 0.55) / 0.45) * 0.85;
 
     // Directional "sun" light re-purposes as moonlight at night: warm color +
     // higher intensity by day, cool blue + dim by night, smooth blend between.
@@ -1616,7 +1668,8 @@ function initHeroSilhouette() {
     // and 16:30-20, calmer midday, sparse late night.
     if (usingGLTFHumans) {
       const density = crowdDensityFor(hour);
-      const active = Math.max(2, Math.round(WALKER_COUNT * density));
+      let active = Math.max(2, Math.round(WALKER_COUNT * density));
+      if (heroLite()) active = Math.min(active, 3); // skinned crowd is the frame cost
       npcs.forEach((npc) => {
         if (npc.commuterIndex === undefined) return;
         const hide = npc.commuterIndex >= active;
@@ -1676,13 +1729,49 @@ function initHeroSilhouette() {
     updateSignalLights(signalStateAt(0));
     renderer.render(scene, camera);
   } else {
+    // ---- FPS watchdog: degrade before we die ----
+    // Evaluated over 4s windows (first 3s ignored — load/compile spikes).
+    // Under 22fps sustained: "lite mode" (crowd capped at 3, stars off).
+    // Under 10fps sustained: the device can't do this — retire to poster.
+    let fpsWindowStart = 0;
+    let fpsFrames = 0;
+
+    function watchdogTick(t) {
+      if (t < 3) return;
+      if (!fpsWindowStart) fpsWindowStart = t;
+      fpsFrames++;
+      const span = t - fpsWindowStart;
+      if (span < 4) return;
+      const fps = fpsFrames / span;
+      fpsFrames = 0;
+      fpsWindowStart = t;
+      if (fps < 10) {
+        activatePosterFallback("sustained " + fps.toFixed(1) + " fps");
+      } else if (fps < 22 && !liteMode) {
+        liteMode = true;
+        window.__EV_DEBUG.liteMode = true;
+        console.warn("EL VYNCE hero: lite mode — sustained " + fps.toFixed(1) + " fps");
+      }
+    }
+
     function animate() {
+      if (posterActive) return; // poster took over — stop scheduling frames
       requestAnimationFrame(animate);
       if (!isVisible || tabHidden) return;
+      try {
+        animateFrame();
+      } catch (err) {
+        // A crashing frame must not strand a frozen canvas on screen.
+        activatePosterFallback("render error: " + (err && err.message));
+      }
+    }
+
+    function animateFrame() {
       // Order matters: getElapsedTime() internally consumes the delta, so
       // getDelta() must run first or every animation advances at ~0 speed.
       const dt = Math.min(clock.getDelta(), 0.1);
       const t = clock.elapsedTime;
+      watchdogTick(t);
 
       const sig = signalStateAt(t);
       updateSignalLights(sig);
