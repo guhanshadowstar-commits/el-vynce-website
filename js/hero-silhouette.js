@@ -843,6 +843,137 @@ function initHeroSilhouette() {
     });
   });
 
+  // ---- Traffic: cars in two lanes, yielding to the pedestrian signal ----
+  // Achromatic bodies (brand palette). Cars brake for the crosswalk while
+  // pedestrians cross (signal green) and go on red; they follow each other so
+  // they never overlap; headlights/taillights glow from dusk on the same
+  // curve as the streetlamps. Spawned synchronously so traffic is present
+  // even before the human GLBs finish loading.
+  const carHeadlightMats = [];
+  const carTaillightMats = [];
+  const cars = [];
+  const CAR_LANES = [{ x: 1.05, dir: 1 }, { x: -1.05, dir: -1 }];
+  const CAR_BODY_COLORS = [0x111111, 0x2b2f36, 0xe8e8e8, 0x9aa0a6];
+  const CW_LO = 0.2, CW_HI = 3.8;            // crosswalk footprint along z
+  const CAR_HALF = 0.95;                      // half the car's length
+  const CAR_Z_BACK = -20, CAR_Z_FRONT = 12;  // loop range along the street
+  const CAR_PER_LANE = isSmallScreen ? 1 : 2;
+
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.85 });
+  const carGlassMat = new THREE.MeshStandardMaterial({ color: 0x1a2026, roughness: 0.25, metalness: 0.4 });
+  const wheelGeo = new THREE.CylinderGeometry(0.17, 0.17, 0.14, 12);
+  wheelGeo.rotateZ(Math.PI / 2); // axle along X so mesh.rotation.x rolls the wheel
+
+  function createCar(bodyColor) {
+    const group = new THREE.Group();
+    const paint = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5, metalness: 0.35 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 1.9), paint);
+    body.position.y = 0.36;
+    body.castShadow = !isSmallScreen;
+    group.add(body);
+    body.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(body.geometry),
+      new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 })
+    ));
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.3, 0.95), carGlassMat);
+    cabin.position.set(0, 0.62, -0.05);
+    cabin.castShadow = !isSmallScreen;
+    group.add(cabin);
+
+    const wheels = [];
+    [[-0.46, 0.6], [0.46, 0.6], [-0.46, -0.6], [0.46, -0.6]].forEach(([wx, wz]) => {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      w.position.set(wx, 0.17, wz);
+      w.castShadow = !isSmallScreen;
+      group.add(w);
+      wheels.push(w);
+    });
+
+    // Headlights face +Z (front, travel direction); taillights face -Z (rear).
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0 });
+    hlMat.toneMapped = false;
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.2 });
+    tlMat.toneMapped = false;
+    [-0.28, 0.28].forEach((hx) => {
+      const hl = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12), hlMat);
+      hl.position.set(hx, 0.34, 0.96);
+      group.add(hl);
+      const tl = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), tlMat);
+      tl.position.set(hx, 0.36, -0.96);
+      tl.rotation.y = Math.PI;
+      group.add(tl);
+    });
+    carHeadlightMats.push(hlMat);
+    carTaillightMats.push(tlMat);
+
+    return { group, wheels };
+  }
+
+  CAR_LANES.forEach(({ x, dir }) => {
+    for (let i = 0; i < CAR_PER_LANE; i++) {
+      const car = createCar(CAR_BODY_COLORS[cars.length % CAR_BODY_COLORS.length]);
+      car.group.rotation.y = dir > 0 ? 0 : Math.PI;
+      const span = CAR_Z_FRONT - CAR_Z_BACK;
+      car.z = CAR_Z_BACK + ((i + Math.random() * 0.6) / CAR_PER_LANE) * span;
+      car.lane = x;
+      car.dir = dir;
+      car.cruise = (isSmallScreen ? 3.2 : 3.6) + Math.random() * 1.2;
+      car.speed = car.cruise;
+      car.group.position.set(x, 0.01, car.z);
+      scene.add(car.group);
+      cars.push(car);
+    }
+  });
+
+  function stepCars(t, dt, sig) {
+    const green = sig.green; // pedestrians crossing -> cars must yield
+    cars.forEach((car) => {
+      let target = car.cruise;
+
+      // Yield to the crosswalk: ease down over the last 5 units, stop at the line.
+      if (green) {
+        if (car.dir > 0 && car.z < CW_LO) {
+          const dist = (CW_LO - CAR_HALF - 0.1) - car.z;
+          if (dist < 5) target = Math.min(target, car.cruise * Math.max(0, dist / 5));
+          if (dist < 0.3) target = 0;
+        } else if (car.dir < 0 && car.z > CW_HI) {
+          const dist = car.z - (CW_HI + CAR_HALF + 0.1);
+          if (dist < 5) target = Math.min(target, car.cruise * Math.max(0, dist / 5));
+          if (dist < 0.3) target = 0;
+        }
+      }
+
+      // Car-following: never rear-end the car ahead in the same lane.
+      let leadGap = Infinity;
+      cars.forEach((o) => {
+        if (o === car || o.dir !== car.dir || Math.abs(o.lane - car.lane) > 0.1) return;
+        const ahead = (o.z - car.z) * car.dir;
+        if (ahead > 0) leadGap = Math.min(leadGap, ahead);
+      });
+      if (leadGap < 2.6) target = Math.min(target, car.cruise * Math.max(0, (leadGap - 2.2) / 0.4));
+      if (leadGap < 2.2) target = 0;
+
+      car.speed += (target - car.speed) * Math.min(1, 3 * dt);
+      car.z += car.dir * car.speed * dt;
+
+      // Hard clamp at the stop line so a car never rolls onto the zebra on green.
+      if (green) {
+        if (car.dir > 0 && car.z < CW_LO) car.z = Math.min(car.z, CW_LO - CAR_HALF - 0.1);
+        else if (car.dir < 0 && car.z > CW_HI) car.z = Math.max(car.z, CW_HI + CAR_HALF + 0.1);
+      }
+
+      // Loop back to the far end once it drives off frame.
+      if (car.dir > 0 && car.z > CAR_Z_FRONT) car.z = CAR_Z_BACK - Math.random() * 3;
+      else if (car.dir < 0 && car.z < CAR_Z_BACK) car.z = CAR_Z_FRONT + Math.random() * 3;
+
+      car.group.position.z = car.z;
+      const roll = (car.speed * dt) / 0.17;
+      car.wheels.forEach((w) => { w.rotation.x += roll; });
+    });
+  }
+
   // ---- The towers: two near rows flanking the street + a far skyline row ----
   const buildingEdgeMaterials = [];
   const buildingFacadeMaterials = [];
@@ -1679,6 +1810,10 @@ function initHeroSilhouette() {
     lampGlowMats.forEach((m) => { m.opacity = lampGlow; });
     lampPoolMats.forEach((m) => { m.opacity = lampGlow * 0.3; });
 
+    // Car lamps wake with the streetlamps; taillights stay faintly lit by day.
+    carHeadlightMats.forEach((m) => { m.opacity = lampGlow; });
+    carTaillightMats.forEach((m) => { m.opacity = 0.18 + lampGlow * 0.8; });
+
     // Contact blobs (mobile) soften as the sun drops.
     const blobOpacity = 0.13 + sunAlt * 0.16;
     contactShadowMats.forEach((m) => { m.opacity = blobOpacity; });
@@ -1822,6 +1957,8 @@ function initHeroSilhouette() {
       const sig = signalStateAt(t);
       updateSignalLights(sig);
       window.__EV_DEBUG.signal = sig;
+
+      stepCars(t, dt, sig);
 
       resolveCrowding(
         npcs.filter((n) => !n.isStylized && !n.static && !n.hidden && n.state === "walk"),
