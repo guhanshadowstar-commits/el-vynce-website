@@ -56,7 +56,9 @@ const CURB_WAIT_X = 2.55;         // where waiters gather before crossing
 // framing flattens depth so much that distant figures visually overlap the
 // far tower facades and read as "walking on the buildings".
 const WALK_Z_MIN = isSmallScreen ? -9 : -13;
-const WALK_Z_MAX = isSmallScreen ? 9 : 5;
+// Phones turn walkers around at z=5: past that they'd be beside/behind the
+// closer mobile camera — outside the frame, an empty-feeling street.
+const WALK_Z_MAX = 5;
 // Pedestrian signal: 10s walk, 16s wait — long enough for a crowd to gather
 // at the curb, so each green releases a satisfying crossing wave.
 const SIGNAL_CYCLE = 26;
@@ -563,11 +565,17 @@ function initHeroSilhouette() {
   // Base camera pose (before parallax/scroll offsets are applied each frame).
   // Desktop: eye-level-ish documentary framing that sees both sidewalks and
   // the crosswalk. Portrait phones get a pulled-back, wider-angle framing.
+  // Mobile reframe: the old phone pose (y=4.2, z=16, FOV 60) was a high,
+  // pulled-back wide shot — right for landscape, but a portrait frustum is
+  // so narrow horizontally that the near sidewalk band fell OUTSIDE the view
+  // and distant figures rendered tiny ("humans are not visible"). Street-
+  // level camera, closer and lower, wider lens: figures read ~40% larger and
+  // the crosswalk sits center-frame as the focal event.
   const BASE_CAM_POS = isSmallScreen
-    ? new THREE.Vector3(0, 4.2, 16)
+    ? new THREE.Vector3(0, 2.6, 11.5)
     : new THREE.Vector3(0, 2.7, 9.2);
   const BASE_CAM_TARGET = isSmallScreen
-    ? new THREE.Vector3(0, 1.9, -4)
+    ? new THREE.Vector3(0, 1.6, -3)
     : new THREE.Vector3(0, 1.15, -0.5);
   // Scroll-pulled-back pose — camera rises and retreats as the visitor scrolls past the hero.
   const SCROLL_CAM_POS = isSmallScreen
@@ -579,7 +587,7 @@ function initHeroSilhouette() {
   const DRIFT_AMPLITUDE_Y = 0.18;
   const DRIFT_SPEED = 0.06;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 60 : 45, width / height, 0.1, 120);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 66 : 45, width / height, 0.1, 120);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
@@ -679,6 +687,9 @@ function initHeroSilhouette() {
   const sunHalo = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 7.5), sunHaloMat);
   sunHalo.position.z = -0.05;
   sunDisc.add(sunHalo);
+  // Phones: 1.4x — sized for the narrow portrait frame so the sun/moon stay
+  // readable celestial anchors instead of distant dots.
+  if (isSmallScreen) sunDisc.scale.setScalar(1.4);
   scene.add(sunDisc);
 
   // ---- Moon disc with feathered cool glow ----
@@ -691,6 +702,7 @@ function initHeroSilhouette() {
   const moonHalo = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), moonHaloMat);
   moonHalo.position.z = -0.05;
   moonDisc.add(moonHalo);
+  if (isSmallScreen) moonDisc.scale.setScalar(1.4);
   scene.add(moonDisc);
 
   // ---- Ground / road / sidewalks / curbs ----
@@ -1466,8 +1478,10 @@ function initHeroSilhouette() {
       alwaysAnimate: true,
     });
     sitter.productId = sitterOutfit.id;
-    const benchX = isSmallScreen ? -2.9 : -3.8;
-    const benchZ = isSmallScreen ? 2.6 : 1.6;
+    // Mobile bench sits nearer the curb and crosswalk so the sitter stays
+    // inside the reframed portrait view.
+    const benchX = isSmallScreen ? -2.6 : -3.8;
+    const benchZ = isSmallScreen ? 2.0 : 1.6;
     sitter.group.position.set(benchX, SIDEWALK_H + 0.02, benchZ);
     sitter.group.rotation.y = Math.PI * 0.55; // angled toward the street
 
@@ -1616,14 +1630,17 @@ function initHeroSilhouette() {
     const sunArc = THREE.MathUtils.clamp((hour - 6) / (18.5 - 6), 0, 1) * Math.PI;
     // Arc peak stays inside the camera frustum (45° FOV, slight downward tilt
     // → sky is only visible up to y≈9 at z=-22; higher and the sun vanishes).
-    sunDisc.position.set(Math.cos(sunArc) * -CELESTIAL_X, 1.5 + Math.sin(sunArc) * 6.5, -22);
+    // Phones lift the arc base: near the horizon the sun/moon sit in the fog
+    // band and behind tower rows in the narrow frame — invisible for the
+    // first/last hour of their arc.
+    sunDisc.position.set(Math.cos(sunArc) * -CELESTIAL_X, (isSmallScreen ? 2.6 : 1.5) + Math.sin(sunArc) * 6.5, -22);
     sunDisc.visible = sunAlt > 0.001;
     sunDisc.material.opacity = Math.min(1, sunAlt * 2.2);
     sunHaloMat.opacity = 0.45 + sunAlt * 0.3;
 
     let moonHour = hour < 6 ? hour + 24 : hour;
     const moonArc = THREE.MathUtils.clamp((moonHour - 18.5) / (30 - 18.5), 0, 1) * Math.PI;
-    moonDisc.position.set(Math.cos(moonArc) * -CELESTIAL_X, 1.5 + Math.sin(moonArc) * 6.5, -22);
+    moonDisc.position.set(Math.cos(moonArc) * -CELESTIAL_X, (isSmallScreen ? 2.6 : 1.5) + Math.sin(moonArc) * 6.5, -22);
     moonDisc.visible = moonAlt > 0.001;
     moonDisc.material.opacity = Math.min(1, moonAlt * 2.2);
     moonHaloMat.opacity = 0.35 + moonAlt * 0.3;
@@ -1668,7 +1685,10 @@ function initHeroSilhouette() {
     // and 16:30-20, calmer midday, sparse late night.
     if (usingGLTFHumans) {
       const density = crowdDensityFor(hour);
-      let active = Math.max(2, Math.round(WALKER_COUNT * density));
+      // Phones keep a floor of 3 — the narrow frame shows a slice of the
+      // street, so late-night density that reads "calm" on desktop reads
+      // "abandoned" on mobile.
+      let active = Math.max(isSmallScreen ? 3 : 2, Math.round(WALKER_COUNT * density));
       if (heroLite()) active = Math.min(active, 3); // skinned crowd is the frame cost
       npcs.forEach((npc) => {
         if (npc.commuterIndex === undefined) return;
