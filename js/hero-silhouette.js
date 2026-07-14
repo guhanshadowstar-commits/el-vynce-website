@@ -520,15 +520,22 @@ function initHeroSilhouette() {
   // ---- Fail-safe poster fallback -----------------------------------------
   // The scene must be INCAPABLE of showing a broken canvas. If WebGL is
   // unavailable, the renderer throws, the GPU kills the context (routine on
-  // iPhones under memory pressure), a frame crashes, or sustained FPS is
-  // hopeless, the hero swaps to a full-bleed brand photograph — instantly,
-  // and remembered for the rest of the session so we don't crash-loop.
+  // iPhones under memory pressure), or a frame crashes, the hero swaps to a
+  // full-bleed brand photograph.
+  //   persist=true (hard failures: no WebGL / renderer threw / context lost /
+  //     render exception) remembers the swap for the session so a device that
+  //     genuinely can't run WebGL doesn't crash-loop.
+  //   persist=false (soft FPS demotion) does NOT remember — a slow first load
+  //     (asset decode blocking the main thread) must not lock a capable
+  //     machine onto the photo for the whole session; each load re-measures.
   // Debug: ?evposter=1 forces the poster path for testing.
   let posterActive = false;
-  function activatePosterFallback(reason) {
+  function activatePosterFallback(reason, persist) {
     if (posterActive) return;
     posterActive = true;
-    try { sessionStorage.setItem("ev-hero-poster", "1"); } catch (e) { /* private mode */ }
+    if (persist) {
+      try { sessionStorage.setItem("ev-hero-poster", "1"); } catch (e) { /* private mode */ }
+    }
     console.warn("EL VYNCE hero: poster fallback —", reason);
     mount.innerHTML = "";
     mount.style.cssText =
@@ -541,12 +548,12 @@ function initHeroSilhouette() {
     try { return sessionStorage.getItem("ev-hero-poster") === "1"; } catch (e) { return false; }
   })();
   if (params.get("evposter") === "1" || bootPoster) {
-    activatePosterFallback(bootPoster ? "previous crash this session" : "forced via ?evposter=1");
+    activatePosterFallback(bootPoster ? "hard failure earlier this session" : "forced via ?evposter=1", true);
     return;
   }
   const glProbe = document.createElement("canvas");
   if (!glProbe.getContext("webgl2") && !glProbe.getContext("webgl")) {
-    activatePosterFallback("WebGL not available");
+    activatePosterFallback("WebGL not available", true);
     return;
   }
   // -------------------------------------------------------------------------
@@ -598,7 +605,7 @@ function initHeroSilhouette() {
   try {
     renderer = new THREE.WebGLRenderer({ antialias: !isSmallScreen, alpha: true, powerPreference: "high-performance" });
   } catch (err) {
-    activatePosterFallback("WebGLRenderer threw: " + err.message);
+    activatePosterFallback("WebGLRenderer threw: " + err.message, true);
     return;
   }
   renderer.setSize(width, height);
@@ -607,7 +614,7 @@ function initHeroSilhouette() {
   // would otherwise silently freeze or go blank. Swap to the poster instead.
   renderer.domElement.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
-    activatePosterFallback("WebGL context lost");
+    activatePosterFallback("WebGL context lost", true);
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   // Film-look grading; sky/sun/moon/star materials opt out (toneMapped=false)
@@ -1750,15 +1757,28 @@ function initHeroSilhouette() {
     renderer.render(scene, camera);
   } else {
     // ---- FPS watchdog: degrade before we die ----
-    // Evaluated over 4s windows (first 3s ignored — load/compile spikes).
-    // Under 22fps sustained: "lite mode" (crowd capped at 3, stars off).
-    // Under 10fps sustained: the device can't do this — retire to poster.
+    // CRITICAL timing: only judge STEADY-STATE fps. The first seconds after
+    // load are dominated by one-time work that blocks the main thread and
+    // tanks the frame rate regardless of GPU power — Draco decode, cloning 8
+    // skeletons, compositing 8 tee textures, first-render shader compile. A
+    // watchdog that measures that window falsely demotes fast machines. So we
+    // don't start counting until the humans are BUILT (usingGLTFHumans) plus a
+    // 1.5s settle, and we require TWO consecutive bad windows before acting so
+    // a lone GC pause / tab-throttle spike can't trip it.
+    //   <22fps sustained -> lite mode (crowd capped at 3, stars off)
+    //   <10fps twice     -> retire to poster (NON-persistent: a slow first
+    //                       load must not lock a capable laptop onto the photo
+    //                       for the whole session — each reload re-measures)
     let fpsWindowStart = 0;
     let fpsFrames = 0;
+    let warmStamp = 0;
+    let badWindows = 0;
 
     function watchdogTick(t) {
-      if (t < 3) return;
-      if (!fpsWindowStart) fpsWindowStart = t;
+      if (!usingGLTFHumans) return;      // crowd not built yet — main thread busy
+      if (!warmStamp) { warmStamp = t; return; }
+      if (t - warmStamp < 1.5) return;   // settle after build (GPU uploads / compile)
+      if (!fpsWindowStart) { fpsWindowStart = t; fpsFrames = 0; return; }
       fpsFrames++;
       const span = t - fpsWindowStart;
       if (span < 4) return;
@@ -1766,11 +1786,17 @@ function initHeroSilhouette() {
       fpsFrames = 0;
       fpsWindowStart = t;
       if (fps < 10) {
-        activatePosterFallback("sustained " + fps.toFixed(1) + " fps");
-      } else if (fps < 22 && !liteMode) {
-        liteMode = true;
-        window.__EV_DEBUG.liteMode = true;
-        console.warn("EL VYNCE hero: lite mode — sustained " + fps.toFixed(1) + " fps");
+        badWindows++;
+        if (badWindows >= 2) activatePosterFallback("sustained " + fps.toFixed(1) + " fps over 2 windows", false);
+      } else if (fps < 22) {
+        badWindows = 0;
+        if (!liteMode) {
+          liteMode = true;
+          window.__EV_DEBUG.liteMode = true;
+          console.warn("EL VYNCE hero: lite mode — sustained " + fps.toFixed(1) + " fps");
+        }
+      } else {
+        badWindows = 0;
       }
     }
 
@@ -1782,7 +1808,7 @@ function initHeroSilhouette() {
         animateFrame();
       } catch (err) {
         // A crashing frame must not strand a frozen canvas on screen.
-        activatePosterFallback("render error: " + (err && err.message));
+        activatePosterFallback("render error: " + (err && err.message), true);
       }
     }
 
