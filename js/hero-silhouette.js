@@ -531,7 +531,7 @@ function initHeroSilhouette() {
   // Debug: ?evposter=1 forces the poster path for testing.
   let posterActive = false;
   // Versioned key — bumping this clears all stuck poster flags from prior deploys.
-  const POSTER_KEY = "ev-hero-poster-v3";
+  const POSTER_KEY = "ev-hero-poster-v4";
   function activatePosterFallback(reason, persist) {
     if (posterActive) return;
     posterActive = true;
@@ -830,6 +830,7 @@ function initHeroSilhouette() {
 
   // ---- Car traffic lights: one per lane at the crosswalk stop line ----
   const carSigRedMats = [], carSigYellowMats = [], carSigGreenMats = [];
+  const CW_LO = 0.2, CW_HI = 3.8; // crosswalk footprint along z
   [
     { x: ROAD_HALF + 0.35, z: CW_LO },
     { x: -(ROAD_HALF + 0.35), z: CW_HI },
@@ -927,7 +928,6 @@ function initHeroSilhouette() {
     0xecf0f1, // pearl white
     0xe67e22, // burnt orange
   ];
-  const CW_LO = 0.2, CW_HI = 3.8;            // crosswalk footprint along z
   const CAR_HALF = 0.95;                      // half the car's length
   const CAR_Z_BACK = -20, CAR_Z_FRONT = 12;  // loop range along the street
   const CAR_PER_LANE = isSmallScreen ? 1 : 2;
@@ -2183,6 +2183,28 @@ function initHeroSilhouette() {
     }
   }
   window.addEventListener("resize", onResize);
+  // Belt-and-braces against a zero-size race: on some loads mount.clientWidth
+  // (and even window.innerWidth) reads as 0 at init time, sizing the renderer
+  // to a 0px-wide canvas that then never repaints — a plain "resize" listener
+  // never fires again if the viewport doesn't subsequently change size.
+  // ResizeObserver reports the real size as soon as layout settles (and on
+  // any later container resize), so it self-corrects that race.
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(onResize).observe(mount);
+  }
+  // Some browsers report clientWidth/innerWidth as 0 for the first frame or
+  // two after DOMContentLoaded (layout hasn't settled yet) — re-measure once
+  // rendering has actually started to catch and correct that case too.
+  requestAnimationFrame(() => requestAnimationFrame(onResize));
 }
 
-document.addEventListener("DOMContentLoaded", initHeroSilhouette);
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    initHeroSilhouette();
+  } catch (err) {
+    console.error("EL VYNCE hero: init threw:", err);
+    // Last-resort: show the brand photo rather than a broken empty header.
+    const m = document.getElementById("hero-silhouette");
+    if (m) m.style.cssText = "background:#f4f3f1 url('images/hero-real-3.jpg') center 30%/cover no-repeat;filter:grayscale(1) contrast(1.04);";
+  }
+});
