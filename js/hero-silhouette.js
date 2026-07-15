@@ -564,7 +564,10 @@ function initHeroSilhouette() {
   const height = mount.clientHeight || window.innerHeight;
 
   const scene = new THREE.Scene();
-  scene.background = null;
+  // Background color matches sky — updated each frame via updateDayNightCycle.
+  // Setting a real Color (not null) makes the canvas opaque immediately on
+  // first render, before models load, so the hero never shows as transparent.
+  scene.background = new THREE.Color(0x8fc6f0); // default morning sky
   // Morning haze: distant towers melt into the sky color (updated per frame).
   // Mobile fog is TIGHTER than desktop (the camera sits further back on
   // phones, so equal fog distances would leave the far skyline crisper than
@@ -605,7 +608,7 @@ function initHeroSilhouette() {
   // street-scene distances the visual difference is negligible.
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: !isSmallScreen, alpha: true, powerPreference: "high-performance" });
+    renderer = new THREE.WebGLRenderer({ antialias: !isSmallScreen, powerPreference: "high-performance" });
   } catch (err) {
     activatePosterFallback("WebGLRenderer threw: " + err.message, true);
     return;
@@ -1752,6 +1755,7 @@ function initHeroSilhouette() {
 
     skyColor.copy(sampleStops(SKY_STOPS, hour));
     bgMat.color.copy(skyColor);
+    scene.background.copy(skyColor); // keep canvas background in sync with sky
     // Haze matches the sky so distant towers melt into the morning air.
     scene.fog.color.copy(skyColor);
     // Slight fog-like tint on hemisphere light ground color keeps buildings
