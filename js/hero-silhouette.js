@@ -530,22 +530,24 @@ function initHeroSilhouette() {
   //     machine onto the photo for the whole session; each load re-measures.
   // Debug: ?evposter=1 forces the poster path for testing.
   let posterActive = false;
+  // Versioned key — bumping this clears all stuck poster flags from prior deploys.
+  const POSTER_KEY = "ev-hero-poster-v3";
   function activatePosterFallback(reason, persist) {
     if (posterActive) return;
     posterActive = true;
     if (persist) {
-      try { sessionStorage.setItem("ev-hero-poster", "1"); } catch (e) { /* private mode */ }
+      try { sessionStorage.setItem(POSTER_KEY, "1"); } catch (e) { /* private mode */ }
     }
     console.warn("EL VYNCE hero: poster fallback —", reason);
     mount.innerHTML = "";
     mount.style.cssText =
-      "background:#f4f3f1 url('images/hero-real.jpg') center 30%/cover no-repeat;" +
+      "background:#f4f3f1 url('images/hero-real-3.jpg') center 30%/cover no-repeat;" +
       "filter:grayscale(1) contrast(1.04);";
     if (heroHeader) heroHeader.classList.remove("is-night");
   }
   const params = new URLSearchParams(window.location.search);
   const bootPoster = (() => {
-    try { return sessionStorage.getItem("ev-hero-poster") === "1"; } catch (e) { return false; }
+    try { return sessionStorage.getItem(POSTER_KEY) === "1"; } catch (e) { return false; }
   })();
   if (params.get("evposter") === "1" || bootPoster) {
     activatePosterFallback(bootPoster ? "hard failure earlier this session" : "forced via ?evposter=1", true);
