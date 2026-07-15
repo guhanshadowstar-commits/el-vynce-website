@@ -685,6 +685,35 @@ function initHeroSilhouette() {
   const stars = new THREE.Points(starGeo, starMat);
   scene.add(stars);
 
+  // ---- Birds: V-shape flock drifting lazily across the upper sky ----
+  const birds = [];
+  {
+    const birdCount = isSmallScreen ? 5 : 7;
+    for (let i = 0; i < birdCount; i++) {
+      const bGeo = new THREE.BufferGeometry();
+      bGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([
+        -0.42,  0.14, 0,
+         0,     0,    0,
+         0.42,  0.14, 0,
+      ]), 3));
+      const bMat = new THREE.LineBasicMaterial({ color: 0x1c1c2e, transparent: true, opacity: 0.6, fog: false, depthWrite: false });
+      bMat.toneMapped = false;
+      const bLine = new THREE.Line(bGeo, bMat);
+      const bGroup = new THREE.Group();
+      bGroup.add(bLine);
+      const by = 7.5 + Math.random() * 4;
+      bGroup.position.set((Math.random() - 0.5) * 70, by, -24 - Math.random() * 6);
+      birds.push({
+        group: bGroup, mat: bMat, line: bLine,
+        speed: (2.8 + Math.random() * 2.4) * (Math.random() > 0.5 ? 1 : -1),
+        flapPhase: Math.random() * Math.PI * 2,
+        flapSpeed: 2.2 + Math.random() * 1.8,
+        baseY: by,
+      });
+      scene.add(bGroup);
+    }
+  }
+
   // Soft radial texture shared by celestial halos, contact shadows and lamp
   // pools — a feathered gradient, never a hard-edged disc.
   const radialTex = makeRadialTexture();
@@ -1055,6 +1084,20 @@ function initHeroSilhouette() {
     buildingEdgeMaterials.push(tower.edgeMaterial);
     if (tower.windowDotMaterial) allWindowDots.push(tower.windowDotMaterial);
   });
+
+  // Give each tower's window material an individual pulse phase so towers
+  // glow at slightly different intensities — some offices busy, some dark.
+  allWindowDots.forEach((m) => {
+    m._phase      = Math.random() * Math.PI * 2;
+    m._speed      = 0.12 + Math.random() * 0.22;
+    m._flickerNext = 4 + Math.random() * 16;  // seconds until first flicker
+    m._flickering  = false;
+    m._flickerEnd  = 0;
+  });
+  // Shared elapsed-time for updateDayNightCycle (updated each animateFrame).
+  let sceneT = 0;
+  // Phone-checker glow (attached after GLTF load).
+  let phoneGlowMat = null, phoneGlowLight = null;
 
   // ---------------------------------------------------------------------
   // Human cast. Real rigged Mixamo humans; stylized procedural fallback if
@@ -1640,6 +1683,23 @@ function initHeroSilhouette() {
     }
     window.__EV_DEBUG.strideRaw = strideRaw;
 
+    // ---- Phone-checker glow: tiny blue-white screen visible at night ----
+    const phoneNpc = npcs[4]; // walker index 4 is the phone-checker
+    if (phoneNpc && phoneNpc.group) {
+      const pgMat = new THREE.MeshBasicMaterial({ color: 0xd4e8ff, transparent: true, opacity: 0 });
+      pgMat.toneMapped = false;
+      const pgMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.18), pgMat);
+      pgMesh.position.set(0.15, 0.92, 0.09); // near right hand
+      pgMesh.rotation.x = -0.4;
+      phoneNpc.group.add(pgMesh);
+      phoneGlowMat = pgMat;
+      if (!isSmallScreen) {
+        phoneGlowLight = new THREE.PointLight(0xd4e8ff, 0, 1.4);
+        phoneGlowLight.position.set(0.15, 0.98, 0.1);
+        phoneNpc.group.add(phoneGlowLight);
+      }
+    }
+
     // ---- Street performer: every district has one artist ----
     const danceClip = stripRootMotion(dancerG.animations[0]);
     const dancerFig = buildHuman(PEOPLE.dancer, dancerG, danceClip, null, null);
@@ -1855,10 +1915,25 @@ function initHeroSilhouette() {
     hemi.intensity = 0.25 + sunAlt * 0.25;
 
     // Window dots: invisible by day, glow warm amber once dusk sets in.
+    // Each tower pulses at its own rate and flickers occasionally (TV / person
+    // walking past) so the skyline feels occupied rather than uniform.
     const windowGlow = Math.max(0, (nightAmount - 0.45) / 0.55);
     allWindowDots.forEach((m) => {
-      m.opacity = windowGlow * 0.95;
+      const pulse = 0.72 + Math.sin(sceneT * m._speed + m._phase) * 0.2;
+      if (sceneT > 0 && sceneT >= m._flickerNext) {
+        m._flickering = true;
+        m._flickerEnd  = sceneT + 0.06 + Math.random() * 0.1;
+        m._flickerNext = sceneT + 5 + Math.random() * 15;
+      }
+      if (m._flickering && sceneT >= m._flickerEnd) m._flickering = false;
+      m.opacity = windowGlow * pulse * 0.95 * (m._flickering ? 0.1 : 1);
     });
+
+    // Phone-checker screen glow wakes at dusk.
+    if (phoneGlowMat) {
+      phoneGlowMat.opacity = windowGlow * 0.82;
+      if (phoneGlowLight) phoneGlowLight.intensity = windowGlow * 0.32;
+    }
 
     // Streetlamps wake at dusk: warm heads + soft pools on the pavement.
     const lampGlow = Math.max(0, (nightAmount - 0.35) / 0.65);
@@ -2015,6 +2090,18 @@ function initHeroSilhouette() {
 
       stepCars(t, dt, sig);
 
+      // Birds: lazy drift across upper sky with wing flap
+      birds.forEach((b) => {
+        b.group.position.x += b.speed * dt;
+        b.group.position.y = b.baseY + Math.sin(t * 0.28 + b.flapPhase) * 0.5;
+        const pos = b.line.geometry.attributes.position;
+        const fy = 0.14 + Math.sin(t * b.flapSpeed + b.flapPhase) * 0.13;
+        pos.setY(0, fy); pos.setY(2, fy);
+        pos.needsUpdate = true;
+        if (b.speed > 0 && b.group.position.x >  42) b.group.position.x = -42;
+        if (b.speed < 0 && b.group.position.x < -42) b.group.position.x =  42;
+      });
+
       resolveCrowding(
         npcs.filter((n) => !n.isStylized && !n.static && !n.hidden && n.state === "walk"),
         dt
@@ -2051,6 +2138,7 @@ function initHeroSilhouette() {
         }
       });
 
+      sceneT = t; // expose time to updateDayNightCycle for window flicker/pulse
       updateDayNightCycle();
 
       // Brake lights: override base taillight opacity when car is slowing.
