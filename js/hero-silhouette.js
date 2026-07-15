@@ -799,6 +799,36 @@ function initHeroSilhouette() {
     scene.add(g);
   });
 
+  // ---- Car traffic lights: one per lane at the crosswalk stop line ----
+  const carSigRedMats = [], carSigYellowMats = [], carSigGreenMats = [];
+  [
+    { x: ROAD_HALF + 0.35, z: CW_LO },
+    { x: -(ROAD_HALF + 0.35), z: CW_HI },
+  ].forEach(({ x, z }) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3.5, 8), poleMat);
+    pole.position.y = 1.75;
+    g.add(pole);
+    const housing = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.65, 0.2), poleMat);
+    housing.position.y = 3.5;
+    g.add(housing);
+    [[0xff3b30, 3.72], [0xffcc00, 3.5], [0x39d353, 3.28]].forEach(([col, ly], i) => {
+      const m = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.1 });
+      m.toneMapped = false;
+      [1, -1].forEach((f) => {
+        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12), m);
+        dot.position.set(0, ly, f * 0.11);
+        if (f < 0) dot.rotation.y = Math.PI;
+        g.add(dot);
+      });
+      if (i === 0) carSigRedMats.push(m);
+      else if (i === 1) carSigYellowMats.push(m);
+      else carSigGreenMats.push(m);
+    });
+    g.position.set(x, SIDEWALK_H, z);
+    scene.add(g);
+  });
+
   // ---- Streetlamps: slim poles with warm heads + night light pools ----
   const lampGlowMats = [];
   const lampPoolMats = [];
@@ -858,7 +888,16 @@ function initHeroSilhouette() {
   const carTaillightMats = [];
   const cars = [];
   const CAR_LANES = [{ x: 1.05, dir: 1 }, { x: -1.05, dir: -1 }];
-  const CAR_BODY_COLORS = [0x111111, 0x2b2f36, 0xe8e8e8, 0x9aa0a6];
+  const CAR_BODY_COLORS = [
+    0xc0392b, // crimson red
+    0x2980b9, // cobalt blue
+    0x27ae60, // forest green
+    0xf39c12, // amber
+    0x8e44ad, // violet
+    0x1abc9c, // teal
+    0xecf0f1, // pearl white
+    0xe67e22, // burnt orange
+  ];
   const CW_LO = 0.2, CW_HI = 3.8;            // crosswalk footprint along z
   const CAR_HALF = 0.95;                      // half the car's length
   const CAR_Z_BACK = -20, CAR_Z_FRONT = 12;  // loop range along the street
@@ -913,7 +952,7 @@ function initHeroSilhouette() {
     carHeadlightMats.push(hlMat);
     carTaillightMats.push(tlMat);
 
-    return { group, wheels };
+    return { group, wheels, tlMat };
   }
 
   CAR_LANES.forEach(({ x, dir }) => {
@@ -934,11 +973,13 @@ function initHeroSilhouette() {
 
   function stepCars(t, dt, sig) {
     const green = sig.green; // pedestrians crossing -> cars must yield
+    // Yellow phase: cars also brake 2 s before their light turns red.
+    const yellowBrake = !sig.green && sig.timeLeft < 2;
     cars.forEach((car) => {
       let target = car.cruise;
 
-      // Yield to the crosswalk: ease down over the last 5 units, stop at the line.
-      if (green) {
+      // Yield to the crosswalk on red OR during yellow warning phase.
+      if (green || yellowBrake) {
         if (car.dir > 0 && car.z < CW_LO) {
           const dist = (CW_LO - CAR_HALF - 0.1) - car.z;
           if (dist < 5) target = Math.min(target, car.cruise * Math.max(0, dist / 5));
@@ -961,10 +1002,11 @@ function initHeroSilhouette() {
       if (leadGap < 2.2) target = 0;
 
       car.speed += (target - car.speed) * Math.min(1, 3 * dt);
+      car.braking = car.speed < car.cruise * 0.5; // flag read by brake-light pass
       car.z += car.dir * car.speed * dt;
 
-      // Hard clamp at the stop line so a car never rolls onto the zebra on green.
-      if (green) {
+      // Hard clamp at the stop line so a car never rolls onto the zebra on red/yellow.
+      if (green || yellowBrake) {
         if (car.dir > 0 && car.z < CW_LO) car.z = Math.min(car.z, CW_LO - CAR_HALF - 0.1);
         else if (car.dir < 0 && car.z > CW_HI) car.z = Math.max(car.z, CW_HI + CAR_HALF + 0.1);
       }
@@ -1732,6 +1774,13 @@ function initHeroSilhouette() {
   function updateSignalLights(sig) {
     signalGreenMats.forEach((m) => { m.opacity = sig.green ? 1 : 0.12; });
     signalRedMats.forEach((m) => { m.opacity = sig.green ? 0.12 : 1; });
+    // Car traffic lights: inverse of pedestrian signal.
+    // Yellow fires the last 3 s before cars lose right-of-way.
+    const carYellow = !sig.green && sig.timeLeft < 3;
+    const carGreen  = !sig.green && !carYellow;
+    carSigRedMats.forEach((m)    => { m.opacity = sig.green  ? 1 : 0.1; });
+    carSigYellowMats.forEach((m) => { m.opacity = carYellow  ? 1 : 0.1; });
+    carSigGreenMats.forEach((m)  => { m.opacity = carGreen   ? 1 : 0.1; });
   }
 
   // ---- Day/night cycle state (real local clock driven) ----
@@ -2003,6 +2052,12 @@ function initHeroSilhouette() {
       });
 
       updateDayNightCycle();
+
+      // Brake lights: override base taillight opacity when car is slowing.
+      // This runs AFTER updateDayNightCycle so it wins over the base value.
+      cars.forEach((car) => {
+        if (car.braking && car.tlMat) car.tlMat.opacity = Math.max(car.tlMat.opacity, 0.92);
+      });
 
       // Cursor parallax: ease toward the target offset rather than snapping.
       parallaxX += (pointerX - parallaxX) * 0.04;
