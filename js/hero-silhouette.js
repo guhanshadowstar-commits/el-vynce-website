@@ -714,6 +714,69 @@ function initHeroSilhouette() {
     }
   }
 
+  // ---- Neon shop/café signs: emissive canvas-text panels at lobby level ----
+  const neonSigns = [];
+  {
+    function makeNeonTex(text, hex) {
+      const c = document.createElement("canvas");
+      c.width = 256; c.height = 80;
+      const g = c.getContext("2d");
+      g.fillStyle = "#04040a";
+      g.fillRect(0, 0, 256, 80);
+      g.shadowColor = hex; g.shadowBlur = 24;
+      g.fillStyle = hex;
+      g.font = "bold 52px Arial,sans-serif";
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(text, 128, 42);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+    [
+      { text: "KOPI", hex: "#ff6b35", x:  6.8, z: -5.4 },
+      { text: "24H",  hex: "#00e5ff", x: -7.0, z: -5.2 },
+      { text: "CHAI", hex: "#ffd234", x:  9.8, z: -5.6 },
+    ].forEach(({ text, hex, x, z }) => {
+      const m = new THREE.MeshBasicMaterial({ map: makeNeonTex(text, hex), transparent: true, opacity: 0, depthWrite: false });
+      m.toneMapped = false;
+      m._buzzNext = 8 + Math.random() * 18;
+      m._buzzing  = false;
+      m._buzzEnd  = 0;
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.48), m);
+      mesh.position.set(x, SIDEWALK_H + 0.52, z);
+      scene.add(mesh);
+      neonSigns.push(m);
+    });
+  }
+
+  // ---- Airplane: silver silhouette crosses the upper sky every 20-35 s ----
+  const planeMat = new THREE.MeshBasicMaterial({ color: 0xdde4ec });
+  planeMat.toneMapped = false;
+  const planeGroup = new THREE.Group();
+  {
+    const fuselage = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.07, 0.11), planeMat);
+    const wing     = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 1.24), planeMat);
+    const vFin     = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.04), planeMat);
+    vFin.position.set(-0.43, 0.11, 0); // vertical tail
+    planeGroup.add(fuselage, wing, vFin);
+  }
+  const navDotGeo    = new THREE.SphereGeometry(0.022, 6, 6);
+  const navRedMat    = new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0 });
+  const navGrnMat    = new THREE.MeshBasicMaterial({ color: 0x30ff80, transparent: true, opacity: 0 });
+  const navStrobeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+  navRedMat.toneMapped = navGrnMat.toneMapped = navStrobeMat.toneMapped = false;
+  const navRedDot    = new THREE.Mesh(navDotGeo, navRedMat);
+  const navGrnDot    = new THREE.Mesh(navDotGeo, navGrnMat);
+  const navStrobeDot = new THREE.Mesh(navDotGeo, navStrobeMat);
+  navRedDot.position.set(0, 0, -0.63); // port wing tip
+  navGrnDot.position.set(0, 0,  0.63); // starboard wing tip
+  navStrobeDot.position.set(-0.45, 0.14, 0); // tail strobe
+  planeGroup.add(navRedDot, navGrnDot, navStrobeDot);
+  planeGroup.position.set(-55, 11, -25);
+  planeGroup.visible = false;
+  scene.add(planeGroup);
+  let planeX = -55, planeDir = 1, planeFlying = false, nextFlightAt = 5 + Math.random() * 8;
+
   // Soft radial texture shared by celestial halos, contact shadows and lamp
   // pools — a feathered gradient, never a hard-edged disc.
   const radialTex = makeRadialTexture();
@@ -1107,7 +1170,8 @@ function initHeroSilhouette() {
   // Shared elapsed-time for updateDayNightCycle (updated each animateFrame).
   let sceneT = 0;
   // Phone-checker glow (attached after GLTF load).
-  let phoneGlowMat = null, phoneGlowLight = null;
+  let phoneGlowMat = null, phoneGlowLight = null, notifMat = null;
+  const notifState = { timer: 0, nextAt: 12 + Math.random() * 8 };
 
   // ---------------------------------------------------------------------
   // Human cast. Real rigged Mixamo humans; stylized procedural fallback if
@@ -1713,6 +1777,38 @@ function initHeroSilhouette() {
         phoneGlowLight.position.set(0.15, 0.98, 0.1);
         phoneNpc.group.add(phoneGlowLight);
       }
+
+      // Notification bubble: green chat bubble that pops above the head at night
+      {
+        const bc = document.createElement("canvas");
+        bc.width = 80; bc.height = 56;
+        const bg = bc.getContext("2d");
+        // Rounded bubble body (manual arc for broad browser compat)
+        bg.fillStyle = "#25d366";
+        bg.beginPath();
+        const r = 9, x0 = 4, y0 = 4, w = 72, h = 38;
+        bg.moveTo(x0 + r, y0);
+        bg.lineTo(x0 + w - r, y0); bg.arcTo(x0 + w, y0, x0 + w, y0 + r, r);
+        bg.lineTo(x0 + w, y0 + h - r); bg.arcTo(x0 + w, y0 + h, x0 + w - r, y0 + h, r);
+        bg.lineTo(x0 + r, y0 + h); bg.arcTo(x0, y0 + h, x0, y0 + h - r, r);
+        bg.lineTo(x0, y0 + r); bg.arcTo(x0, y0, x0 + r, y0, r);
+        bg.closePath(); bg.fill();
+        // Chat dots
+        bg.fillStyle = "#ffffff";
+        bg.font = "bold 20px Arial,sans-serif";
+        bg.textAlign = "center"; bg.textBaseline = "middle";
+        bg.fillText("•••", 40, 24);
+        // Bubble tail
+        bg.fillStyle = "#25d366";
+        bg.beginPath(); bg.moveTo(16, 42); bg.lineTo(8, 56); bg.lineTo(28, 42); bg.fill();
+        const bTex = new THREE.CanvasTexture(bc);
+        bTex.colorSpace = THREE.SRGBColorSpace;
+        notifMat = new THREE.MeshBasicMaterial({ map: bTex, transparent: true, opacity: 0, depthWrite: false });
+        notifMat.toneMapped = false;
+        const notifMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.19), notifMat);
+        notifMesh.position.set(0.1, 2.1, 0.08); // floating above the NPC head
+        phoneNpc.group.add(notifMesh);
+      }
     }
 
     // ---- Street performer: every district has one artist ----
@@ -1950,6 +2046,18 @@ function initHeroSilhouette() {
       if (phoneGlowLight) phoneGlowLight.intensity = windowGlow * 0.32;
     }
 
+    // Neon signs: wake at dusk; buzz occasionally like a real neon tube.
+    const neonGlow = Math.max(0, (nightAmount - 0.38) / 0.62);
+    neonSigns.forEach((m) => {
+      if (sceneT > 0 && sceneT >= m._buzzNext) {
+        m._buzzing = true;
+        m._buzzEnd  = sceneT + 0.12 + Math.random() * 0.18;
+        m._buzzNext = sceneT + 10 + Math.random() * 22;
+      }
+      if (m._buzzing && sceneT >= m._buzzEnd) m._buzzing = false;
+      m.opacity = neonGlow * (m._buzzing ? 0.08 + Math.random() * 0.4 : 0.9);
+    });
+
     // Streetlamps wake at dusk: warm heads + soft pools on the pavement.
     const lampGlow = Math.max(0, (nightAmount - 0.35) / 0.65);
     lampGlowMats.forEach((m) => { m.opacity = lampGlow; });
@@ -2116,6 +2224,47 @@ function initHeroSilhouette() {
         if (b.speed > 0 && b.group.position.x >  42) b.group.position.x = -42;
         if (b.speed < 0 && b.group.position.x < -42) b.group.position.x =  42;
       });
+
+      // Airplane crossing
+      if (!planeFlying && t >= nextFlightAt) {
+        planeFlying = true;
+        planeDir    = Math.random() > 0.5 ? 1 : -1;
+        planeX      = planeDir > 0 ? -55 : 55;
+        planeGroup.rotation.y = planeDir > 0 ? 0 : Math.PI;
+        planeGroup.visible = true;
+      }
+      if (planeFlying) {
+        planeX += planeDir * 26 * dt;
+        planeGroup.position.x = planeX;
+        const strobe = Math.sin(t * Math.PI / 0.6) > 0.82;
+        navRedMat.opacity    = 0.92;
+        navGrnMat.opacity    = 0.92;
+        navStrobeMat.opacity = strobe ? 1 : 0;
+        if (Math.abs(planeX) > 57) {
+          planeFlying = false;
+          planeGroup.visible = false;
+          navRedMat.opacity = navGrnMat.opacity = navStrobeMat.opacity = 0;
+          nextFlightAt = t + 20 + Math.random() * 15;
+        }
+      }
+
+      // Phone notification bubble (night only)
+      if (notifMat) {
+        if (notifState.timer === 0 && t >= notifState.nextAt) {
+          notifState.timer = t;
+          notifState.nextAt = t + 8 + Math.random() * 10;
+        }
+        if (notifState.timer > 0) {
+          const el = t - notifState.timer;
+          let op;
+          if      (el < 0.35) op = el / 0.35;
+          else if (el < 2.4)  op = 1;
+          else if (el < 2.75) op = 1 - (el - 2.4) / 0.35;
+          else                { op = 0; notifState.timer = 0; }
+          const na = nightAmountFor(getLocalDayFraction());
+          notifMat.opacity = op * Math.max(0, (na - 0.4) / 0.6);
+        }
+      }
 
       resolveCrowding(
         npcs.filter((n) => !n.isStylized && !n.static && !n.hidden && n.state === "walk"),
