@@ -39,8 +39,8 @@ const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for p
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
 // Commuter walkers (the rush-hour stream). Dancer, bench sitter and the
 // conversation pair are added on top of these.
-const WALKER_COUNT = isSmallScreen ? 6 : 10;
-const FIGURE_COUNT = isSmallScreen ? 6 : 8; // stylized fallback crowd size
+const WALKER_COUNT = isSmallScreen ? 3 : 5;
+const FIGURE_COUNT = isSmallScreen ? 3 : 5; // stylized fallback crowd size
 // Horizontal reach of the sun/moon arc: the narrow portrait frustum can only
 // see ~±8 world units at the sky plane, so the arc is tightened on phones.
 const CELESTIAL_X = isSmallScreen ? 6 : 15;
@@ -802,7 +802,12 @@ function initHeroSilhouette() {
   const poleMat = new THREE.MeshStandardMaterial({ color: 0x24262b, roughness: 0.7, metalness: 0.3 });
   const signalRedMats = [];
   const signalGreenMats = [];
-  [[CURB_WAIT_X + 0.25, CROSS_Z - 1.35], [-(CURB_WAIT_X + 0.25), CROSS_Z + 1.35]].forEach(([px, pz]) => {
+  // Planted at the curb, just inside LANE_MIN (2.7) — the ambient walking
+  // band — so strolling pedestrians pass behind it instead of clipping
+  // straight through the pole (there's no obstacle avoidance in the walk
+  // state, so anything sitting inside that band gets walked through).
+  const SIGNAL_POLE_X = ROAD_HALF + 0.3; // 2.5, between the curb (2.27) and LANE_MIN (2.7)
+  [[SIGNAL_POLE_X, CROSS_Z - 1.35], [-SIGNAL_POLE_X, CROSS_Z + 1.35]].forEach(([px, pz]) => {
     const g = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 2.6, 8), poleMat);
     pole.position.y = 1.3;
@@ -985,11 +990,16 @@ function initHeroSilhouette() {
   }
 
   CAR_LANES.forEach(({ x, dir }) => {
+    // Each lane gets its own random phase offset — without this, both lanes
+    // partition the same span identically and their cars spawn at mirrored
+    // positions, so oncoming cars keep reaching the crosswalk in lockstep
+    // pairs instead of independent, organic traffic.
+    const span = CAR_Z_FRONT - CAR_Z_BACK;
+    const laneOffset = Math.random() * span;
     for (let i = 0; i < CAR_PER_LANE; i++) {
       const car = createCar(CAR_BODY_COLORS[cars.length % CAR_BODY_COLORS.length]);
       car.group.rotation.y = dir > 0 ? 0 : Math.PI;
-      const span = CAR_Z_FRONT - CAR_Z_BACK;
-      car.z = CAR_Z_BACK + ((i + Math.random() * 0.6) / CAR_PER_LANE) * span;
+      car.z = CAR_Z_BACK + (((i + Math.random() * 0.6) / CAR_PER_LANE) * span + laneOffset) % span;
       car.lane = x;
       car.dir = dir;
       car.cruise = (isSmallScreen ? 3.2 : 3.6) + Math.random() * 1.2;
@@ -1457,8 +1467,11 @@ function initHeroSilhouette() {
   function stepHuman(npc, t, dt, sig) {
     // Eased speed — nobody snaps between standing and full stride.
     npc.speed += (npc.targetSpeed - npc.speed) * Math.min(1, 3.2 * dt);
-    // Stride sync: clip rate follows true ground speed (physics, not loops).
-    npc.walkAction.timeScale = THREE.MathUtils.clamp(npc.speed / npc.strideSpeed, 0.05, 2.2);
+    // Stride sync: freeze animation when truly stopped (looks natural), else
+    // slave clip rate to ground speed so feet grip the pavement.
+    npc.walkAction.timeScale = npc.speed < 0.04
+      ? 0
+      : THREE.MathUtils.clamp(npc.speed / npc.strideSpeed, 0.15, 2.0);
 
     if (npc.state === "walk") {
       npc.targetSpeed = npc.cruise;
@@ -1626,13 +1639,15 @@ function initHeroSilhouette() {
       trip: tripClip && retargetClip(tripClip, ANIM_SOURCE_PREFIX, prefix, root),
     });
 
-    // Wardrobe logic: a design marked femaleOnly (the crop top) must never be
-    // composited onto the male rig. Men draw from the unisex list; women draw
-    // from a list with the female-only pieces FIRST so those designs still
-    // appear on the street (there are fewer women than men in the cast).
+    // Wardrobe logic: femaleOnly designs (crop tops) go ONLY on the woman rig.
+    // Men cycle through the baggy tees exclusively — crop tops must never appear
+    // on a male body. Women ONLY wear the femaleOnly crop-top designs; if there
+    // aren't enough female designs to cover all women they cycle back to start.
     const outfits = SHIRT_PRODUCTS.map((p, idx) => ({ ...p, teeImage: teeImages[idx] }));
-    const maleOutfits = outfits.filter((o) => !o.femaleOnly);
-    const femaleOutfits = [...outfits.filter((o) => o.femaleOnly), ...outfits.filter((o) => !o.femaleOnly)];
+    const maleOutfits   = outfits.filter((o) => !o.femaleOnly); // baggy tees only
+    const femaleOutfits = outfits.filter((o) =>  o.femaleOnly); // crop tops only
+    // Safety: if no femaleOnly designs exist fall back to all outfits for women.
+    const femalePool = femaleOutfits.length ? femaleOutfits : outfits;
     let maleCursor = 0;
     let femaleCursor = 0;
 
@@ -1646,7 +1661,7 @@ function initHeroSilhouette() {
         ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
         : walkRemy;
       const outfit = useWoman
-        ? femaleOutfits[femaleCursor++ % femaleOutfits.length]
+        ? femalePool[femaleCursor++ % femalePool.length]
         : maleOutfits[maleCursor++ % maleOutfits.length];
       const fig = buildHuman(spec, src, walk, outfit.teeImage, shirtImg);
       const baseSpeed = strideRaw > 0.01
@@ -1671,8 +1686,8 @@ function initHeroSilhouette() {
         lane: randomLane(side),
         dir: (i >> 1) % 2 === 0 ? 1 : -1,
         zPos: WALK_Z_MIN + Math.random() * (WALK_Z_MAX - WALK_Z_MIN),
-        canCross: !isCoffee && !isPhone && i % 2 === 0,
-        crossCooldownUntil: Math.random() * 25,
+        canCross: !isCoffee && !isPhone, // all non-archetype walkers use the crosswalk
+        crossCooldownUntil: Math.random() * 10, // start crossing sooner after load
         pauseChance: isPhone ? 1 / 12 : 1 / 45,
         pauseDur: isPhone ? [4, 9] : [1.2, 3.2],
         commuterIndex: i,
@@ -1715,7 +1730,7 @@ function initHeroSilhouette() {
 
     // ---- Bench sitter: laughing at something on her phone ----
     const sitClip = stripRootMotion(womanG.animations[0]);
-    const sitterOutfit = outfits[7]; // Style Pays Off — unisex, matches her click-through
+    const sitterOutfit = femalePool[0]; // crop top on the bench woman
     const sitterFig = buildHuman(PEOPLE.woman, womanG, sitClip, sitterOutfit.teeImage, womanShirtImg);
     const sitter = spawnNpcCommon(sitterFig, WALKER_COUNT + 1, {
       rigPrefix: PEOPLE.woman.prefix,
