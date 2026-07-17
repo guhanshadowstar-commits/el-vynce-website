@@ -285,7 +285,27 @@ function makeRadialTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-// Warm honey-wood floor — light planks with subtle grain.
+// Light cream tile floor matching the reference.
+function makeTileTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = "#f0e8d8";
+  g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = "rgba(180,160,140,0.35)";
+  g.lineWidth = 1;
+  [0, 64, 128, 192, 256].forEach(p => {
+    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, 256); g.stroke();
+    g.beginPath(); g.moveTo(0, p); g.lineTo(256, p); g.stroke();
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(5, 7);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Wood floor (kept for furniture).
 function makeWoodTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 256;
@@ -307,12 +327,12 @@ function makeWoodTexture() {
   return tex;
 }
 
-// Warm cream plaster wall.
+// Warm orange wall — matches the reference café palette.
 function makeWallTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#d4b882";
+  g.fillStyle = "#c8763c";
   g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 400; i++) {
     g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)";
@@ -503,8 +523,8 @@ function initHeroSilhouette() {
 
   // ---- Scene & renderer ----------------------------------------------
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0c0804);
-  scene.fog = new THREE.FogExp2(0x0c0804, 0.028);
+  scene.background = new THREE.Color(0xf7e4c0);
+  scene.fog = new THREE.FogExp2(0xf5dfa0, 0.007);
 
   let renderer;
   try {
@@ -521,7 +541,7 @@ function initHeroSilhouette() {
   });
   renderer.outputColorSpace    = THREE.SRGBColorSpace;
   renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.6;
+  renderer.toneMappingExposure = 2.2;
   renderer.shadowMap.enabled   = !isSmallScreen;
   renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;  // rain clipping planes
@@ -553,9 +573,9 @@ function initHeroSilhouette() {
 
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(W, H),
-      isSmallScreen ? 0.10 : 0.20,  // strength — subtle, only true emitters
-      0.36,                          // radius
-      0.88                           // threshold — only the hottest pixels bloom
+      isSmallScreen ? 0.0 : 0.06,  // near-zero — flat anime style, no glow haze
+      0.30,
+      0.95                          // very high threshold — only the bulb centres
     );
     composer.addPass(bloom);
 
@@ -572,13 +592,13 @@ void main(){
   vec3 c = texture2D(tDiffuse, vUv).rgb;
   float luma = dot(c, vec3(0.299, 0.587, 0.114));
   // Warm shadow lift — deep amber in the darks, keep highlights clean
-  vec3 warmShadow = vec3(1.06, 0.88, 0.68);
-  c = mix(c * warmShadow, c, smoothstep(0.0, 0.45, luma));
-  // Mild saturation boost
-  c = mix(vec3(luma), c, 1.12);
-  // Vignette
+  vec3 warmShadow = vec3(1.04, 0.90, 0.74);
+  c = mix(c * warmShadow, c, smoothstep(0.0, 0.60, luma));
+  // Mild saturation
+  c = mix(vec3(luma), c, 1.10);
+  // Very soft vignette — bright scene needs only a hint
   vec2 d = vUv - 0.5;
-  float vig = 1.0 - dot(d, d) * 2.65;
+  float vig = 1.0 - dot(d, d) * 1.30;
   c *= vig;
   // Subtle film grain
   float g = fract(sin(dot(vUv + mod(uTime * 0.0007, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
@@ -595,26 +615,42 @@ void main(){
   // ---- Lighting ------------------------------------------------------
   // Three Edison PointLights are the key light. Ambient is very dim so the
   // warmth reads as coming purely from the pendants.
-  const ambient = new THREE.AmbientLight(0xffd080, 1.4);
+  // Bright warm ambient — daytime café flooded with light
+  const ambient = new THREE.AmbientLight(0xfff5e0, 7.5);
   scene.add(ambient);
-  const fill = new THREE.DirectionalLight(0xffe0a0, 1.2);
-  fill.position.set(2, 6, 8);
-  scene.add(fill);
+  // Strong sunlight streaming in from the left window
+  const sun = new THREE.DirectionalLight(0xfff8d0, 18.0);
+  sun.position.set(-8, 5, 0);
+  sun.target.position.set(2, 0, -3);
+  if (!isSmallScreen) {
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left   = -12; sun.shadow.camera.right  = 12;
+    sun.shadow.camera.top    =   8; sun.shadow.camera.bottom = -4;
+    sun.shadow.camera.near   = 0.5; sun.shadow.camera.far    = 30;
+    sun.shadow.bias          = -0.001;
+  }
+  scene.add(sun);
+  scene.add(sun.target);
 
   const radialTex = makeRadialTexture();
 
-  const PENDANT_DEFS  = [
-    { x: -2.0, z: -0.5 },   // above laptop table
-    { x:  1.2, z: -2.8 },   // above coffee table
-    { x:  3.0, z: -4.0 },   // above 3rd table
-    { x:  4.5, z: -4.6 },   // above counter
+  // Row of 7 pendants across the full ceiling width — like the reference image
+  const PENDANT_DEFS = [
+    { x: -4.5, z: -3.2 },
+    { x: -2.8, z: -3.2 },
+    { x: -1.1, z: -3.2 },
+    { x:  0.6, z: -3.2 },
+    { x:  2.3, z: -3.2 },
+    { x:  4.0, z: -3.2 },
+    { x:  5.7, z: -3.2 },
   ];
   const pendantLights    = [];
   const pendantFloorMats = [];
   const CORD_Y = 4.0;
 
   PENDANT_DEFS.forEach(({ x, z }) => {
-    const light = new THREE.PointLight(0xffb040, isSmallScreen ? 6.0 : 9.0, 10.0, 1.2);
+    const light = new THREE.PointLight(0xffb848, isSmallScreen ? 3.5 : 5.5, 8.0, 1.2);
     light.position.set(x, CORD_Y - 0.18, z);
     if (!isSmallScreen) {
       light.castShadow = true;
@@ -662,9 +698,9 @@ void main(){
   });
 
   // ---- Room geometry -------------------------------------------------
-  const floorMat   = new THREE.MeshStandardMaterial({ map: makeWoodTexture(), roughness: 0.88 });
+  const floorMat   = new THREE.MeshStandardMaterial({ map: makeTileTexture(), roughness: 0.90 });
   const wallMat    = new THREE.MeshStandardMaterial({ map: makeWallTexture(), roughness: 0.88 });
-  const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x0c0a08, roughness: 1.0 });
+  const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xf5e0c0, roughness: 1.0 });
 
   // Floor
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(18, 20), floorMat);
@@ -748,19 +784,19 @@ void main(){
   addLeftWallPanel(winZlo - 3,   6,  2.1, 4.2);  // panel toward back wall
 
   // ---- Window --------------------------------------------------------
-  // Night-sky backdrop behind the glass
-  const nightSky = new THREE.Mesh(
+  // Bright warm sky outside — sunlight pours in from the left
+  const daySky = new THREE.Mesh(
     new THREE.PlaneGeometry(winZspan + 2, 5),
-    new THREE.MeshBasicMaterial({ color: 0x010305 })
+    new THREE.MeshBasicMaterial({ color: 0xffe8c0 })
   );
-  nightSky.rotation.y = -Math.PI / 2;
-  nightSky.position.set(-8.0, winYmid + 0.2, winZmid);
-  scene.add(nightSky);
+  daySky.rotation.y = -Math.PI / 2;
+  daySky.position.set(-8.0, winYmid + 0.2, winZmid);
+  scene.add(daySky);
 
-  // Glass pane — dark tinted, slightly reflective
+  // Glass pane — barely tinted, mostly transparent in daylight
   const glassMat = new THREE.MeshStandardMaterial({
-    color: 0x0a0c14, transparent: true, opacity: 0.50,
-    roughness: 0.04, metalness: 0.12,
+    color: 0xfff4e0, transparent: true, opacity: 0.10,
+    roughness: 0.02, metalness: 0.05,
   });
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(winZspan - 0.06, winYspan - 0.06), glassMat);
   glass.rotation.y = -Math.PI / 2;
@@ -817,6 +853,7 @@ void main(){
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.40, 0.44), m);
     sign.rotation.y = -Math.PI / 2;
     sign.position.set(-7.4, y, z);
+    sign.visible = false;   // daytime — neons off
     scene.add(sign);
     neonSignMats.push(m);
   });
@@ -855,6 +892,7 @@ void main(){
     clippingPlanes: rainClipPlanes,
   });
   const rainLines = new THREE.LineSegments(rainGeo, rainMat);
+  rainLines.visible = false;   // daytime — no rain
   scene.add(rainLines);
 
   const rainDrops = Array.from({ length: RAIN_COUNT }, (_, i) => ({
@@ -961,14 +999,14 @@ void main(){
   }
 
   // ---- Furniture & props ---------------------------------------------
-  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x7a4c22, roughness: 0.78 });
-  const chairWoodMat= new THREE.MeshStandardMaterial({ color: 0x6a3c18, roughness: 0.82 });
-  const metalMat    = new THREE.MeshStandardMaterial({ color: 0x5a5050, roughness: 0.55, metalness: 0.50 });
+  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0xb86428, roughness: 0.76 });
+  const chairWoodMat= new THREE.MeshStandardMaterial({ color: 0xa05820, roughness: 0.80 });
+  const metalMat    = new THREE.MeshStandardMaterial({ color: 0x6a5840, roughness: 0.55, metalness: 0.30 });
 
   // Regular-height rectangular tables — top at y=0.76.
   function buildTable(x, z, ry = 0) {
     const grp = new THREE.Group();
-    const top = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.038, 0.60), darkWoodMat);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.038, 20), darkWoodMat);
     top.position.y = 0.76;
     top.castShadow = !isSmallScreen;
     grp.add(top);
@@ -1029,8 +1067,8 @@ void main(){
   buildChair(3.0 - 0.60, -4.0 - 0.05, Math.PI * 0.15);
 
   // Counter surface and body
-  const cTopMat   = new THREE.MeshStandardMaterial({ color: 0x6a3c16, roughness: 0.70 });
-  const cFrontMat = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.82 });
+  const cTopMat   = new THREE.MeshStandardMaterial({ color: 0xc87030, roughness: 0.68 });
+  const cFrontMat = new THREE.MeshStandardMaterial({ color: 0xb86028, roughness: 0.80 });
 
   const ctop = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 6.5), cTopMat);
   ctop.position.set(4.7, 0.97, -4.6);
@@ -1178,6 +1216,37 @@ void main(){
   pad.position.set(1.34, 0.768, -2.62);
   pad.rotation.y = 0.4;
   scene.add(pad);
+
+  // ---- Cat (sitting in foreground, facing the counter) ---------------
+  {
+    const catMat  = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.90 });
+    const catGrp  = new THREE.Group();
+    // Body — oval sitting silhouette
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.110, 0.14, 6, 8), catMat);
+    body.rotation.x = 0.28;
+    body.position.set(0, 0.15, 0);
+    catGrp.add(body);
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.082, 10, 8), catMat);
+    head.position.set(0, 0.34, 0.04);
+    catGrp.add(head);
+    // Ears (tiny triangular cones)
+    [-0.044, 0.044].forEach(ex => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.055, 4), catMat);
+      ear.position.set(ex, 0.405, 0.02);
+      catGrp.add(ear);
+    });
+    // Tail — thin capsule curling to the side
+    const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.18, 4, 6), catMat);
+    tail.rotation.z = -0.80;
+    tail.position.set(0.14, 0.08, -0.06);
+    catGrp.add(tail);
+    // Place in foreground facing toward counter
+    catGrp.position.set(1.4, 0, 1.6);
+    catGrp.rotation.y = -0.4;
+    catGrp.traverse(o => { if (o.isMesh) { o.castShadow = !isSmallScreen; o.receiveShadow = !isSmallScreen; } });
+    scene.add(catGrp);
+  }
 
   // ---- Human cast ----------------------------------------------------
   const npcs = [];
@@ -1545,7 +1614,7 @@ void main(){
     // Edison pendant flicker
     pendantLights.forEach((light, i) => {
       const f = 1 + Math.sin(t * 2.4 + i * 4.3) * 0.04;
-      light.intensity = (isSmallScreen ? 6.0 : 9.0) * f;
+      light.intensity = (isSmallScreen ? 3.5 : 5.5) * f;
     });
 
     // Screen glow pulse
