@@ -7,10 +7,14 @@
    ES module (three.js r0.160). No build step. */
 
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { GLTFLoader }       from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader }       from "three/addons/loaders/DRACOLoader.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { mergeGeometries }   from "three/addons/utils/BufferGeometryUtils.js";
+import { EffectComposer }    from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass }        from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass }   from "three/addons/postprocessing/UnrealBloomPass.js";
+import { ShaderPass }        from "three/addons/postprocessing/ShaderPass.js";
 
 // Real product photography — front print of each tee. Cycled across every figure
 // so the full catalogue is represented. femaleOnly = crop-top designs never
@@ -105,106 +109,163 @@ function createStylizedFigure(shirtImageUrl) {
 }
 
 // Geometry seated patron — laptop / coffee / idle role.
-// Returns { group, animatables:[{update(t)}], headGrp }.
+// Returns { group, animatables:[{update(t, dt)}], headGrp }.
 function createSeatedFigure({ role = 'idle', shirtImageUrl } = {}) {
-  const clothing = new THREE.MeshStandardMaterial({ color: 0x2a2825, roughness: 0.86 });
-  const skin     = new THREE.MeshStandardMaterial({ color: 0xc79a75, roughness: 0.70 });
-  const pants    = new THREE.MeshStandardMaterial({ color: 0x1e2030, roughness: 0.88 });
-  const hairMat  = new THREE.MeshStandardMaterial({ color: 0x150c06, roughness: 1.0 });
+  // Randomise skin & hair per patron so no two look the same
+  const skinPalette = [0xc69b78, 0xa07250, 0x7b4c30, 0xd4a880];
+  const skinColor   = skinPalette[Math.floor(Math.random() * skinPalette.length)];
+  const hairPalette = [0x0d0906, 0x2e1a0a, 0x190f05, 0x4a3020];
+  const hairColor   = hairPalette[Math.floor(Math.random() * hairPalette.length)];
+  const breathPhase = Math.random() * Math.PI * 2;
+
+  const skin     = new THREE.MeshStandardMaterial({ color: skinColor,  roughness: 0.68, metalness: 0.0 });
+  const clothing = new THREE.MeshStandardMaterial({ color: 0x1c1a18,   roughness: 0.88 });
+  const pants    = new THREE.MeshStandardMaterial({ color: 0x161820,   roughness: 0.90 });
+  const hairMat  = new THREE.MeshStandardMaterial({ color: hairColor,  roughness: 1.00 });
+  const shoeMat  = new THREE.MeshStandardMaterial({ color: 0x0a0a0c,   roughness: 0.78, metalness: 0.05 });
+
   const root = new THREE.Group();
   const animatables = [];
 
-  // Torso
+  // ── Torso (slight forward lean) ──────────────────────────────────────
   const torsoGrp = new THREE.Group();
   torsoGrp.position.set(0, 0.79, 0);
-  torsoGrp.rotation.x = 0.12;
-  torsoGrp.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.32, 4, 8), clothing));
+  torsoGrp.rotation.x = 0.10;
+  torsoGrp.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.165, 0.30, 6, 8), clothing));
   root.add(torsoGrp);
-  if (shirtImageUrl) attachShirtPlane(torsoGrp, shirtImageUrl, 0.03, 0.21);
+  if (shirtImageUrl) attachShirtPlane(torsoGrp, shirtImageUrl, 0.04, 0.20);
 
-  // Head + hair
+  // Collar ring
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.070, 0.066, 0.042, 10), clothing);
+  collar.position.set(0, 0.165, 0);
+  torsoGrp.add(collar);
+
+  // ── Head + hair ──────────────────────────────────────────────────────
   const headGrp = new THREE.Group();
-  headGrp.position.set(0, 1.16, 0.02);
-  headGrp.add(new THREE.Mesh(new THREE.SphereGeometry(0.152, 12, 10), skin));
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.160, 10, 8), hairMat);
-  hair.scale.y = 0.74; hair.position.y = 0.055;
-  headGrp.add(hair);
+  headGrp.position.set(0, 1.14, 0.01);
+  headGrp.add(new THREE.Mesh(new THREE.SphereGeometry(0.148, 14, 12), skin));
+
+  // Hair cap — wider in back, flat on top
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.158, 12, 8), hairMat);
+  hairCap.scale.set(0.98, 0.70, 1.10);
+  hairCap.position.set(0, 0.058, -0.014);
+  headGrp.add(hairCap);
+
+  // Ears
+  [-1, 1].forEach(side => {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.030, 6, 4), skin);
+    ear.scale.set(0.62, 0.90, 0.52);
+    ear.position.set(side * 0.153, 0.010, 0);
+    headGrp.add(ear);
+  });
   root.add(headGrp);
 
-  // Neck
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.066, 0.110, 8), skin);
-  neck.position.set(0, 1.035, 0.015);
+  // ── Neck ─────────────────────────────────────────────────────────────
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.053, 0.064, 0.106, 8), skin);
+  neck.position.set(0, 1.026, 0.011);
   root.add(neck);
 
-  // Thighs (horizontal → +Z)
-  [-0.115, 0.115].forEach(sx => {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.058, 0.37, 8), pants);
-    t.rotation.x = Math.PI / 2;
-    t.position.set(sx, 0.545, 0.185);
-    root.add(t);
-  });
-  // Shins
-  [-0.115, 0.115].forEach(sx => {
-    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.050, 0.040, 0.44, 8), pants);
-    s.position.set(sx, 0.30, 0.37);
-    root.add(s);
-  });
-  // Feet
-  [-0.115, 0.115].forEach(sx => {
-    const f = new THREE.Mesh(new THREE.BoxGeometry(0.088, 0.046, 0.16), pants);
-    f.position.set(sx, 0.07, 0.43);
-    root.add(f);
+  // ── Thighs (horizontal → local +Z, toward table) ─────────────────────
+  [-0.112, 0.112].forEach(sx => {
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.058, 0.28, 4, 8), pants);
+    thigh.rotation.x = Math.PI / 2;
+    thigh.position.set(sx, 0.492, 0.175);
+    root.add(thigh);
   });
 
-  // Arms — pivot at shoulder
+  // ── Shins (vertical, hanging from knee) ──────────────────────────────
+  [-0.112, 0.112].forEach(sx => {
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.042, 0.34, 4, 8), pants);
+    shin.position.set(sx, 0.258, 0.352);
+    root.add(shin);
+  });
+
+  // ── Shoes ─────────────────────────────────────────────────────────────
+  [-0.112, 0.112].forEach(sx => {
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.040, 0.148), shoeMat);
+    shoe.position.set(sx, 0.058, 0.378);
+    root.add(shoe);
+  });
+
+  // ── Arms (pivot at shoulder) ──────────────────────────────────────────
   const makeArm = (side) => {
     const pivot = new THREE.Group();
-    pivot.position.set(side * 0.215, 1.005, 0.02);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.040, 0.25, 8), skin);
-    upper.position.y = -0.125;
+    pivot.position.set(side * 0.212, 0.982, 0.014);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.19, 4, 8), skin);
+    upper.position.y = -0.108;
     pivot.add(upper);
     const elbow = new THREE.Group();
-    elbow.position.y = -0.25;
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.030, 0.23, 8), skin);
-    fore.position.y = -0.115;
-    elbow.add(fore);
+    elbow.position.y = -0.224;
+    const fore = new THREE.Mesh(new THREE.CapsuleGeometry(0.030, 0.18, 4, 8), skin);
+    fore.position.y = -0.100;
+    // Hand sphere at wrist
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.034, 8, 6), skin);
+    hand.position.y = -0.200;
+    elbow.add(fore, hand);
     pivot.add(elbow);
     root.add(pivot);
-    return { pivot, elbow, fore };
+    return { pivot, elbow, fore, hand };
   };
   const lArm = makeArm(-1);
   const rArm = makeArm( 1);
 
+  // ── Role-specific pose + animations ──────────────────────────────────
   if (role === 'laptop') {
-    lArm.pivot.rotation.set(1.08, 0, 0.12);  lArm.elbow.rotation.x = -0.40;
-    rArm.pivot.rotation.set(1.08, 0,-0.12);  rArm.elbow.rotation.x = -0.40;
-    headGrp.rotation.x = 0.24;
-    animatables.push({ update(t) {
-      lArm.fore.position.y = -0.115 + Math.sin(t * 4.4)       * 0.007;
-      rArm.fore.position.y = -0.115 + Math.sin(t * 4.4 + 1.9) * 0.007;
-      headGrp.rotation.x = 0.24 + Math.sin(t * 0.31) * 0.07;
-      headGrp.rotation.y = Math.sin(t * 0.20) * 0.10;
+    lArm.pivot.rotation.set(1.08, 0,  0.11); lArm.elbow.rotation.x = -0.42;
+    rArm.pivot.rotation.set(1.08, 0, -0.11); rArm.elbow.rotation.x = -0.42;
+    headGrp.rotation.x = 0.22;
+    let hvx = 0, hvy = 0;
+    animatables.push({ update(t, dt = 0.016) {
+      // Breathing
+      torsoGrp.scale.y     = 1.0 + Math.sin(t * 0.42 + breathPhase) * 0.019;
+      torsoGrp.position.y  = 0.79 + Math.sin(t * 0.42 + breathPhase) * 0.007;
+      // Finger micro-tap
+      lArm.fore.position.y = -0.100 + Math.sin(t * 4.3)       * 0.006;
+      rArm.fore.position.y = -0.100 + Math.sin(t * 4.3 + 1.9) * 0.006;
+      // Spring head — reacts with inertia
+      const txT = 0.22 + Math.sin(t * 0.31) * 0.06;
+      const tyT = Math.sin(t * 0.20) * 0.09;
+      hvx += (txT - headGrp.rotation.x) * 3.8 * dt; hvx *= 0.83;
+      hvy += (tyT - headGrp.rotation.y) * 3.8 * dt; hvy *= 0.83;
+      headGrp.rotation.x += hvx;
+      headGrp.rotation.y += hvy;
     }});
+
   } else if (role === 'coffee') {
-    lArm.pivot.rotation.set(1.05, 0, 0.10);  lArm.elbow.rotation.x = -0.38;
-    rArm.pivot.rotation.set(0.45, 0, 0);      rArm.elbow.rotation.x = -0.25;
-    animatables.push({ update(t) {
+    lArm.pivot.rotation.set(1.02, 0,  0.10); lArm.elbow.rotation.x = -0.34;
+    rArm.pivot.rotation.set(0.46, 0,  0);    rArm.elbow.rotation.x = -0.22;
+    let hvx = 0, hvy = 0;
+    animatables.push({ update(t, dt = 0.016) {
+      torsoGrp.scale.y    = 1.0 + Math.sin(t * 0.46 + breathPhase) * 0.020;
+      torsoGrp.position.y = 0.79 + Math.sin(t * 0.46 + breathPhase) * 0.008;
       const cy = (t % 9.0) / 9.0;
-      let px = 0.45, ex = -0.25;
-      if      (cy < 0.22) { const p = cy / 0.22;         px = 0.45 + p*0.85; ex = -0.25 - p*0.60; }
-      else if (cy < 0.40) {                               px = 1.30;          ex = -0.85; }
-      else if (cy < 0.58) { const p = (cy-0.40)/0.18;   px = 1.30 - p*0.85; ex = -0.85 + p*0.60; }
+      let px = 0.46, ex = -0.22;
+      if      (cy < 0.22) { const p = cy / 0.22;         px = 0.46 + p * 0.84; ex = -0.22 - p * 0.58; }
+      else if (cy < 0.40) {                               px = 1.30;             ex = -0.80; }
+      else if (cy < 0.58) { const p = (cy-0.40) / 0.18; px = 1.30 - p * 0.84; ex = -0.80 + p * 0.58; }
       rArm.pivot.rotation.x = px;
       rArm.elbow.rotation.x = ex;
-      headGrp.rotation.y = Math.sin(t * 0.24) * 0.20;
-      headGrp.rotation.x = 0.05 + Math.sin(t * 0.18) * 0.06;
+      const txT = 0.05 + Math.sin(t * 0.18) * 0.05;
+      const tyT = Math.sin(t * 0.24) * 0.18;
+      hvx += (txT - headGrp.rotation.x) * 3.0 * dt; hvx *= 0.82;
+      hvy += (tyT - headGrp.rotation.y) * 3.0 * dt; hvy *= 0.82;
+      headGrp.rotation.x += hvx;
+      headGrp.rotation.y += hvy;
     }});
+
   } else {
-    lArm.pivot.rotation.x = 0.30;
-    rArm.pivot.rotation.x = 0.30;
-    animatables.push({ update(t) {
-      headGrp.rotation.y = Math.sin(t * 0.19) * 0.22;
-      headGrp.rotation.x = Math.sin(t * 0.13) * 0.06;
+    lArm.pivot.rotation.x = 0.28;
+    rArm.pivot.rotation.x = 0.28;
+    let hvx = 0, hvy = 0;
+    animatables.push({ update(t, dt = 0.016) {
+      torsoGrp.scale.y    = 1.0 + Math.sin(t * 0.44 + breathPhase) * 0.022;
+      torsoGrp.position.y = 0.79 + Math.sin(t * 0.44 + breathPhase) * 0.009;
+      const txT = Math.sin(t * 0.13) * 0.05;
+      const tyT = Math.sin(t * 0.19) * 0.19;
+      hvx += (txT - headGrp.rotation.x) * 2.5 * dt; hvx *= 0.80;
+      hvy += (tyT - headGrp.rotation.y) * 2.5 * dt; hvy *= 0.80;
+      headGrp.rotation.x += hvx;
+      headGrp.rotation.y += hvy;
     }});
   }
 
@@ -460,15 +521,13 @@ function initHeroSilhouette() {
   });
   renderer.outputColorSpace    = THREE.SRGBColorSpace;
   renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 4.5;
+  renderer.toneMappingExposure = 3.6;
   renderer.shadowMap.enabled   = !isSmallScreen;
   renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;  // rain clipping planes
   mount.appendChild(renderer.domElement);
 
   // ---- Camera --------------------------------------------------------
-  // Eye-level view from the doorway: counter left, tables right, window far-left.
-  // Matches the reference café composition — warm and inviting, not overhead.
   const BASE_CAM_POS    = isSmallScreen
     ? new THREE.Vector3( 0.5, 1.7, 5.5)
     : new THREE.Vector3( 0.5, 1.7, 5.0);
@@ -482,6 +541,56 @@ function initHeroSilhouette() {
   const camera = new THREE.PerspectiveCamera(isSmallScreen ? 60 : 52, W / H, 0.1, 60);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
+
+  // ---- Post-processing -----------------------------------------------
+  // Bloom makes Edison bulbs and neons glow. Warm grade lifts shadows to amber.
+  // Falls back to direct render if WebGL support is missing.
+  let composer     = null;
+  let gradePass    = null;
+  try {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+
+    const bloom = new UnrealBloomPass(
+      new THREE.Vector2(W, H),
+      isSmallScreen ? 0.22 : 0.46,  // strength
+      0.42,                          // radius
+      0.80                           // threshold — only very bright emitters bloom
+    );
+    composer.addPass(bloom);
+
+    // Warm amber grade + vignette + subtle grain
+    const gradeUniforms = { tDiffuse: { value: null }, uTime: { value: 0.0 } };
+    gradePass = new ShaderPass({
+      uniforms: gradeUniforms,
+      vertexShader: `varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader: `
+uniform sampler2D tDiffuse;
+uniform float uTime;
+varying vec2 vUv;
+void main(){
+  vec3 c = texture2D(tDiffuse, vUv).rgb;
+  float luma = dot(c, vec3(0.299, 0.587, 0.114));
+  // Warm shadow lift — deep amber in the darks, keep highlights clean
+  vec3 warmShadow = vec3(1.12, 0.92, 0.72);
+  c = mix(c * warmShadow, c, smoothstep(0.0, 0.52, luma));
+  // Mild saturation boost
+  c = mix(vec3(luma), c, 1.18);
+  // Vignette
+  vec2 d = vUv - 0.5;
+  float vig = 1.0 - dot(d, d) * 2.65;
+  c *= vig;
+  // Subtle film grain
+  float g = fract(sin(dot(vUv + mod(uTime * 0.0007, 1.0), vec2(12.9898, 78.233))) * 43758.5453);
+  c += (g - 0.5) * 0.015;
+  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+}`,
+    });
+    composer.addPass(gradePass);
+  } catch (e) {
+    console.warn("EL VYNCE: post-processing unavailable:", e);
+    composer = null; gradePass = null;
+  }
 
   // ---- Lighting ------------------------------------------------------
   // Three Edison PointLights are the key light. Ambient is very dim so the
@@ -807,6 +916,50 @@ function initHeroSilhouette() {
     steamMat.opacity = 0.30 + Math.sin(t * 0.8) * 0.10;
   }
 
+  // ---- Ambient dust motes in Edison light pools ----------------------
+  const DUST_COUNT = isSmallScreen ? 0 : 36;
+  let dustGeo = null, dustPosArr = null, dustData = [];
+  if (DUST_COUNT > 0) {
+    dustPosArr = new Float32Array(DUST_COUNT * 3);
+    dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPosArr, 3));
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xffe8c0, size: 0.022, transparent: true, opacity: 0.38,
+      depthWrite: false, sizeAttenuation: true,
+    });
+    dustMat.toneMapped = false;
+    scene.add(new THREE.Points(dustGeo, dustMat));
+    dustData = Array.from({ length: DUST_COUNT }, () => {
+      const pd = PENDANT_DEFS[Math.floor(Math.random() * PENDANT_DEFS.length)];
+      return {
+        px: pd.x + (Math.random() - 0.5) * 2.4,
+        py: 0.3 + Math.random() * 2.6,
+        pz: pd.z + (Math.random() - 0.5) * 2.4,
+        vy: 0.006 + Math.random() * 0.014,
+        phase: Math.random() * Math.PI * 2,
+        pd,
+      };
+    });
+  }
+
+  function updateDust(t) {
+    if (!dustGeo) return;
+    dustData.forEach((d, i) => {
+      d.py += d.vy * 0.016;
+      if (d.py > 3.6) {
+        d.py = 0.1 + Math.random() * 0.4;
+        const pd = PENDANT_DEFS[Math.floor(Math.random() * PENDANT_DEFS.length)];
+        d.px = pd.x + (Math.random() - 0.5) * 2.2;
+        d.pz = pd.z + (Math.random() - 0.5) * 2.2;
+        d.pd = pd;
+      }
+      dustPosArr[i*3]   = d.px + Math.sin(t * 0.28 + d.phase) * 0.04;
+      dustPosArr[i*3+1] = d.py;
+      dustPosArr[i*3+2] = d.pz + Math.cos(t * 0.23 + d.phase) * 0.04;
+    });
+    dustGeo.attributes.position.needsUpdate = true;
+  }
+
   // ---- Furniture & props ---------------------------------------------
   const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x7a4c22, roughness: 0.78 });
   const chairWoodMat= new THREE.MeshStandardMaterial({ color: 0x6a3c18, roughness: 0.82 });
@@ -1121,7 +1274,7 @@ function initHeroSilhouette() {
       switch (cs.state) {
 
         case 'OCCUPIED':
-          cs.seatedAnimatables.forEach(a => a.update(t + i * 3.7));
+          cs.seatedAnimatables.forEach(a => a.update(t + i * 3.7, dt));
           cs.stayTimer -= dt;
           if (cs.stayTimer <= 0) {
             removeSeated(cs);
@@ -1376,6 +1529,7 @@ function initHeroSilhouette() {
 
     updateRain(dt);
     updateSteam(t);
+    updateDust(t);
 
     // Neon buzz flicker
     neonSignMats.forEach((m) => {
@@ -1422,11 +1576,12 @@ function initHeroSilhouette() {
     camera.position.copy(camPos);
     camera.lookAt(camTarget);
 
-    renderer.render(scene, camera);
+    if (gradePass) gradePass.uniforms.uTime.value = t;
+    if (composer) { composer.render(); } else { renderer.render(scene, camera); }
   }
 
   if (prefersReducedMotion) {
-    renderer.render(scene, camera);
+    if (composer) { composer.render(); } else { renderer.render(scene, camera); }
   } else {
     function animate() {
       if (posterActive) return;
@@ -1445,9 +1600,12 @@ function initHeroSilhouette() {
     const w = mount.clientWidth || window.innerWidth;
     const h = mount.clientHeight || window.innerHeight;
     renderer.setSize(w, h);
+    if (composer) composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    if (prefersReducedMotion) renderer.render(scene, camera);
+    if (prefersReducedMotion) {
+      if (composer) { composer.render(); } else { renderer.render(scene, camera); }
+    }
   }
   window.addEventListener("resize", onResize);
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(onResize).observe(mount);
