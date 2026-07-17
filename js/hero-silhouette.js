@@ -217,8 +217,8 @@ function makeLimbPair(upperLen, upperRadius, lowerLen, lowerRadius, originY, sid
   return { upperGroup, lowerGroup };
 }
 
-function attachShirtPlane(parent, shirtImageUrl, yOffset = 0.05, z = 0.345) {
-  const shirtGeo = new THREE.PlaneGeometry(0.46, 0.6);
+function attachShirtPlane(parent, shirtImageUrl, yOffset = 0.05, z = 0.40) {
+  const shirtGeo = new THREE.PlaneGeometry(0.60, 0.65);
   const shirtMat = new THREE.MeshBasicMaterial({ color: 0x3a3a3a, transparent: true, depthWrite: false });
   const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
   shirtMesh.position.set(0, yOffset, z);
@@ -245,7 +245,7 @@ function createStylizedFigure(shirtImageUrl) {
 
   const figure = new THREE.Group();
 
-  const torsoGeo = new THREE.CapsuleGeometry(0.34, 0.5, 4, 8);
+  const torsoGeo = new THREE.CapsuleGeometry(0.38, 0.5, 4, 8);
   const torsoMesh = new THREE.Mesh(torsoGeo, clothing);
   const torso = addEdges(torsoMesh).mesh;
   torso.position.set(0, 1.05, 0);
@@ -1062,11 +1062,13 @@ function initHeroSilhouette() {
     for (let i = 0; i < CAR_PER_LANE; i++) {
       const car = createCar(CAR_BODY_COLORS[cars.length % CAR_BODY_COLORS.length]);
       car.group.rotation.y = dir > 0 ? 0 : Math.PI;
-      car.z = CAR_Z_BACK + (((i + Math.random() * 0.6) / CAR_PER_LANE) * span + laneOffset) % span;
+      car.z = CAR_Z_BACK + (((i + Math.random() * 0.8) / CAR_PER_LANE) * span + laneOffset) % span;
       car.lane = x;
       car.dir = dir;
-      car.cruise = (isSmallScreen ? 3.2 : 3.6) + Math.random() * 1.2;
+      car.cruise = 2.4 + Math.random() * 2.8;
       car.speed = car.cruise;
+      car._wasGreen = undefined;
+      car._goAt = null;
       car.group.position.set(x, 0.01, car.z);
       scene.add(car.group);
       cars.push(car);
@@ -1078,10 +1080,17 @@ function initHeroSilhouette() {
     // Yellow phase: cars also brake 2 s before their light turns red.
     const yellowBrake = !sig.green && sig.timeLeft < 2;
     cars.forEach((car) => {
+      // Stagger: when signal switches pedestrian→car, each car waits a random
+      // 0–1.6 s before accelerating — prevents the full convoy going at once.
+      if (car._wasGreen === true && !green) car._goAt = t + Math.random() * 1.6;
+      else if (green) car._goAt = null;
+      car._wasGreen = green;
+      const effectiveStop = green || yellowBrake || (car._goAt != null && t < car._goAt);
+
       let target = car.cruise;
 
-      // Yield to the crosswalk on red OR during yellow warning phase.
-      if (green || yellowBrake) {
+      // Yield to the crosswalk on red, yellow, or during per-car stagger delay.
+      if (effectiveStop) {
         if (car.dir > 0 && car.z < CW_LO) {
           const dist = (CW_LO - CAR_HALF - 0.1) - car.z;
           if (dist < 5) target = Math.min(target, car.cruise * Math.max(0, dist / 5));
@@ -1107,8 +1116,8 @@ function initHeroSilhouette() {
       car.braking = car.speed < car.cruise * 0.5; // flag read by brake-light pass
       car.z += car.dir * car.speed * dt;
 
-      // Hard clamp at the stop line so a car never rolls onto the zebra on red/yellow.
-      if (green || yellowBrake) {
+      // Hard clamp at the stop line so a car never rolls onto the zebra.
+      if (effectiveStop) {
         if (car.dir > 0 && car.z < CW_LO) car.z = Math.min(car.z, CW_LO - CAR_HALF - 0.1);
         else if (car.dir < 0 && car.z > CW_HI) car.z = Math.max(car.z, CW_HI + CAR_HALF + 0.1);
       }
@@ -1408,6 +1417,11 @@ function initHeroSilhouette() {
     if (spec.shirtMesh && spec.tee) {
       cloned.traverse((o) => {
         if (o.isMesh && o.name === spec.shirtMesh) {
+          // Baggy oversized fit on the male tee — scale wider (shoulders) and deeper.
+          if (o.name === "Tops") {
+            o.scale.set(1.18, 1.0, 1.12);
+            o.position.y -= 0.015;
+          }
           const m = (Array.isArray(o.material) ? o.material[0] : o.material).clone();
           m.map = makeTeeTexture(baseShirtImage, teeImage, spec.tee);
           m.needsUpdate = true;
