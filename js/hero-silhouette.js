@@ -337,19 +337,19 @@ function initHeroSilhouette() {
   mount.appendChild(renderer.domElement);
 
   // ---- Camera --------------------------------------------------------
-  // Slightly right of centre, at eye level, looking left into the café.
-  // The window dominates the left third; the counter anchors the right.
+  // Wide cinematic view: window+neon on the left third, tables+counter on the right.
+  // High enough to show pendant cords; far enough back to see the full room depth.
   const BASE_CAM_POS    = isSmallScreen
-    ? new THREE.Vector3( 0.3, 2.0, 6.2)
-    : new THREE.Vector3( 0.8, 2.2, 6.0);
+    ? new THREE.Vector3(-0.2, 4.0, 11.0)
+    : new THREE.Vector3(-0.5, 4.2, 11.5);
   const BASE_CAM_TARGET = isSmallScreen
-    ? new THREE.Vector3(-0.6, 1.0,  0.0)
-    : new THREE.Vector3(-0.4, 1.05, 0.0);
-  const SCROLL_CAM_POS    = new THREE.Vector3(0, 4.5, 11.5);
-  const SCROLL_CAM_TARGET = new THREE.Vector3(0, 1.5,  0.0);
-  const DRIFT_X = 0.20, DRIFT_Y = 0.08, DRIFT_SPD = 0.05;
+    ? new THREE.Vector3(-2.0, 1.0, -2.0)
+    : new THREE.Vector3(-2.5, 1.2, -1.5);
+  const SCROLL_CAM_POS    = new THREE.Vector3(-0.5, 6.5, 15.0);
+  const SCROLL_CAM_TARGET = new THREE.Vector3(-1.5, 0.8, -2.0);
+  const DRIFT_X = 0.14, DRIFT_Y = 0.06, DRIFT_SPD = 0.04;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 66 : 46, W / H, 0.1, 55);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 62 : 56, W / H, 0.1, 60);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
