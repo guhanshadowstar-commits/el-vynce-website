@@ -116,20 +116,20 @@ function makeRadialTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-// Dark wood floor — planks hinted by horizontal grain lines.
+// Warm honey-wood floor — light planks with subtle grain.
 function makeWoodTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#6b3c14";
+  g.fillStyle = "#b07840";
   g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 14; i++) {
-    g.fillStyle = "rgba(0,0,0,0.28)";
-    g.fillRect(0, i * 19, 256, 2);
+  for (let i = 0; i < 16; i++) {
+    g.fillStyle = "rgba(0,0,0,0.12)";
+    g.fillRect(0, i * 17, 256, 2);
   }
-  for (let i = 0; i < 500; i++) {
-    g.fillStyle = Math.random() < 0.5 ? "rgba(255,150,40,0.035)" : "rgba(0,0,0,0.06)";
-    g.fillRect(Math.random() * 256, Math.random() * 256, 4 + Math.random() * 24, 1.5);
+  for (let i = 0; i < 400; i++) {
+    g.fillStyle = Math.random() < 0.5 ? "rgba(255,200,100,0.06)" : "rgba(0,0,0,0.04)";
+    g.fillRect(Math.random() * 256, Math.random() * 256, 4 + Math.random() * 20, 1);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -138,20 +138,42 @@ function makeWoodTexture() {
   return tex;
 }
 
-// Plaster wall — subtle noise over a flat dark base.
+// Warm cream plaster wall.
 function makeWallTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#4e3018";
+  g.fillStyle = "#d4b882";
   g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 300; i++) {
-    g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.02)";
+  for (let i = 0; i < 400; i++) {
+    g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)";
     g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(2, 1.4);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Chalkboard canvas texture with "COFFEE" menu.
+function makeChalkboardTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 320;
+  const g = c.getContext("2d");
+  g.fillStyle = "#1c2a1c";
+  g.fillRect(0, 0, 512, 320);
+  g.fillStyle = "#e8eed8";
+  g.font = "bold 52px serif";
+  g.textAlign = "center";
+  g.fillText("COFFEE", 256, 68);
+  g.strokeStyle = "#c0c8a8";
+  g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(40, 82); g.lineTo(472, 82); g.stroke();
+  g.font = "28px serif";
+  const items = ["Espresso   ₹120", "Latte      ₹150", "Cold Brew  ₹160", "Chai       ₹80"];
+  items.forEach((txt, i) => g.fillText(txt, 256, 128 + i * 48));
+  const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -330,36 +352,36 @@ function initHeroSilhouette() {
   });
   renderer.outputColorSpace    = THREE.SRGBColorSpace;
   renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 2.4;
+  renderer.toneMappingExposure = 3.2;
   renderer.shadowMap.enabled   = !isSmallScreen;
   renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;  // rain clipping planes
   mount.appendChild(renderer.domElement);
 
   // ---- Camera --------------------------------------------------------
-  // Wide cinematic view: window+neon on the left third, tables+counter on the right.
-  // High enough to show pendant cords; far enough back to see the full room depth.
+  // Eye-level view from the doorway: counter left, tables right, window far-left.
+  // Matches the reference café composition — warm and inviting, not overhead.
   const BASE_CAM_POS    = isSmallScreen
-    ? new THREE.Vector3(-0.2, 4.0, 11.0)
-    : new THREE.Vector3(-0.5, 4.2, 11.5);
+    ? new THREE.Vector3( 1.0, 1.9, 9.5)
+    : new THREE.Vector3( 1.5, 2.0, 9.8);
   const BASE_CAM_TARGET = isSmallScreen
-    ? new THREE.Vector3(-2.0, 1.0, -2.0)
-    : new THREE.Vector3(-2.5, 1.2, -1.5);
-  const SCROLL_CAM_POS    = new THREE.Vector3(-0.5, 6.5, 15.0);
-  const SCROLL_CAM_TARGET = new THREE.Vector3(-1.5, 0.8, -2.0);
-  const DRIFT_X = 0.14, DRIFT_Y = 0.06, DRIFT_SPD = 0.04;
+    ? new THREE.Vector3(-1.5, 1.0, -1.5)
+    : new THREE.Vector3(-1.0, 1.0, -2.0);
+  const SCROLL_CAM_POS    = new THREE.Vector3( 0.5, 4.5, 13.0);
+  const SCROLL_CAM_TARGET = new THREE.Vector3(-1.0, 1.0, -2.0);
+  const DRIFT_X = 0.12, DRIFT_Y = 0.05, DRIFT_SPD = 0.04;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 62 : 56, W / H, 0.1, 60);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 65 : 58, W / H, 0.1, 60);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
   // ---- Lighting ------------------------------------------------------
   // Three Edison PointLights are the key light. Ambient is very dim so the
   // warmth reads as coming purely from the pendants.
-  const ambient = new THREE.AmbientLight(0x9a6030, 2.8);
+  const ambient = new THREE.AmbientLight(0xffd080, 3.5);
   scene.add(ambient);
-  const fill = new THREE.DirectionalLight(0xb87840, 1.2);
-  fill.position.set(-3, 5, 6);
+  const fill = new THREE.DirectionalLight(0xffe0a0, 2.0);
+  fill.position.set(2, 6, 8);
   scene.add(fill);
 
   const radialTex = makeRadialTexture();
@@ -374,7 +396,7 @@ function initHeroSilhouette() {
   const CORD_Y = 4.0;
 
   PENDANT_DEFS.forEach(({ x, z }) => {
-    const light = new THREE.PointLight(0xff9a3c, isSmallScreen ? 6.0 : 8.5, 11.0, 1.2);
+    const light = new THREE.PointLight(0xffb040, isSmallScreen ? 8.0 : 10.0, 12.0, 1.1);
     light.position.set(x, CORD_Y - 0.18, z);
     if (!isSmallScreen) {
       light.castShadow = true;
@@ -640,52 +662,71 @@ function initHeroSilhouette() {
   }
 
   // ---- Furniture & props ---------------------------------------------
-  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x5a3418, roughness: 0.80 });
-  const metalMat    = new THREE.MeshStandardMaterial({ color: 0x4a4040, roughness: 0.60, metalness: 0.45 });
-  const stoolMat    = new THREE.MeshStandardMaterial({ color: 0x3a2810, roughness: 0.82 });
+  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x7a4c22, roughness: 0.78 });
+  const chairWoodMat= new THREE.MeshStandardMaterial({ color: 0x6a3c18, roughness: 0.82 });
+  const metalMat    = new THREE.MeshStandardMaterial({ color: 0x5a5050, roughness: 0.55, metalness: 0.50 });
 
-  // Round tables — top at y=1.05
-  function buildBarTable(x, z) {
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.44, 0.05, 20), darkWoodMat);
-    top.position.set(x, 1.05, z);
+  // Regular-height rectangular tables — top at y=0.76.
+  function buildTable(x, z, ry = 0) {
+    const grp = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.038, 0.60), darkWoodMat);
+    top.position.y = 0.76;
     top.castShadow = !isSmallScreen;
-    scene.add(top);
-    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.065, 1.02, 8), metalMat);
-    ped.position.set(x, 0.51, z);
-    scene.add(ped);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.014, 8, 20), metalMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(x, 0.18, z);
-    scene.add(ring);
+    grp.add(top);
+    [[-0.36,-0.24],[0.36,-0.24],[-0.36,0.24],[0.36,0.24]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.026,0.74,6), chairWoodMat);
+      leg.position.set(lx, 0.37, lz);
+      grp.add(leg);
+    });
+    grp.position.set(x, 0, z);
+    grp.rotation.y = ry;
+    scene.add(grp);
   }
-  buildBarTable(-2.0, -0.5);
-  buildBarTable( 1.2, -2.8);
 
-  // Minimal bar stools — thin disc seat, single pedestal, footrest ring.
-  // Seat at y=0.74 (bar height). Two stools per table, offset so they don't clip.
-  function buildStool(x, z) {
-    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.030, 16), stoolMat);
-    seat.position.set(x, 0.74, z);
-    seat.castShadow = !isSmallScreen;
-    scene.add(seat);
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.028, 0.72, 8), metalMat);
-    leg.position.set(x, 0.36, z);
-    scene.add(leg);
-    const foot = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.010, 8, 16), metalMat);
-    foot.rotation.x = Math.PI / 2;
-    foot.position.set(x, 0.20, z);
-    scene.add(foot);
+  // Ladder-back wooden chair — seat at y=0.45.
+  function buildChair(x, z, ry = 0) {
+    const grp = new THREE.Group();
+    // Seat
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.030, 0.36), chairWoodMat);
+    seat.position.y = 0.45;
+    grp.add(seat);
+    // 4 legs
+    [[-0.15,-0.14],[0.15,-0.14],[-0.15,0.13],[0.15,0.13]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.45,6), chairWoodMat);
+      leg.position.set(lx, 0.225, lz);
+      grp.add(leg);
+    });
+    // Back posts
+    [-0.13, 0.13].forEach(bx => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,0.44,6), chairWoodMat);
+      post.position.set(bx, 0.67, -0.14);
+      grp.add(post);
+    });
+    // Back rails
+    [0.60, 0.75].forEach(by => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.022, 0.020), chairWoodMat);
+      rail.position.set(0, by, -0.14);
+      grp.add(rail);
+    });
+    grp.position.set(x, 0, z);
+    grp.rotation.y = ry;
+    grp.traverse(o => { if (o.isMesh) o.castShadow = !isSmallScreen; });
+    scene.add(grp);
   }
-  // Table 1 (laptop) — two stools flanking
-  buildStool(-2.0 + 0.60,  -0.5 + 0.10);
-  buildStool(-2.0 - 0.55,  -0.5 - 0.10);
-  // Table 2 (coffee) — two stools flanking
-  buildStool( 1.2 + 0.58,  -2.8 + 0.08);
-  buildStool( 1.2 - 0.52,  -2.8 - 0.08);
+
+  // Table 1 — laptop patron area
+  buildTable(-2.0, -0.5);
+  buildChair(-2.0 + 0.62, -0.5 + 0.05, Math.PI * 0.94);
+  buildChair(-2.0 - 0.60, -0.5 - 0.05, Math.PI * 0.06);
+
+  // Table 2 — coffee patron area
+  buildTable(1.2, -2.8);
+  buildChair( 1.2 + 0.60, -2.8 + 0.05, Math.PI * 0.90);
+  buildChair( 1.2 - 0.58, -2.8 - 0.05, Math.PI * 0.10);
 
   // Counter surface and body
-  const cTopMat   = new THREE.MeshStandardMaterial({ color: 0x4a2c10, roughness: 0.75 });
-  const cFrontMat = new THREE.MeshStandardMaterial({ color: 0x3a2008, roughness: 0.88 });
+  const cTopMat   = new THREE.MeshStandardMaterial({ color: 0x6a3c16, roughness: 0.70 });
+  const cFrontMat = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.82 });
 
   const ctop = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 6.5), cTopMat);
   ctop.position.set(4.7, 0.97, -4.6);
@@ -703,14 +744,28 @@ function initHeroSilhouette() {
   cstrip.position.set(4.21, 0.97, -4.6);
   scene.add(cstrip);
 
-  // Wall section behind counter
+  // Wall section behind counter — warm cream tile
   const cwall = new THREE.Mesh(
     new THREE.PlaneGeometry(3.0, 4.2),
-    new THREE.MeshStandardMaterial({ color: 0x2e1c0a, roughness: 0.95 })
+    new THREE.MeshStandardMaterial({ color: 0xc8a870, roughness: 0.88 })
   );
   cwall.rotation.y = -Math.PI / 2;
   cwall.position.set(6.98, 2.1, -4.6);
   scene.add(cwall);
+
+  // Chalkboard menu on back wall
+  const cbFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(2.2, 1.40, 0.040),
+    new THREE.MeshStandardMaterial({ color: 0x3a2810, roughness: 0.90 })
+  );
+  cbFrame.position.set(1.8, 2.90, -7.94);
+  scene.add(cbFrame);
+  const cbBoard = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.0, 1.20),
+    new THREE.MeshBasicMaterial({ map: makeChalkboardTexture() })
+  );
+  cbBoard.position.set(1.8, 2.90, -7.91);
+  scene.add(cbBoard);
 
   // Shelf on counter wall
   const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 4.0), darkWoodMat);
@@ -768,7 +823,7 @@ function initHeroSilhouette() {
   hingeGrp.rotation.x = -1.72; // ≈ 99° open
   laptopGroup.add(hingeGrp);
   // On bar table 1 (top y=1.05; base half-height = 0.007)
-  laptopGroup.position.set(-2.05, 1.057, -0.52);
+  laptopGroup.position.set(-2.05, 0.768, -0.52);
   laptopGroup.rotation.y = -0.25;
   scene.add(laptopGroup);
 
@@ -776,8 +831,8 @@ function initHeroSilhouette() {
   const screenGlowLight = new THREE.PointLight(0x3355cc, 1.2, 2.2);
   screenGlowLight.position.set(-2.2, 1.50, -0.55);
   scene.add(screenGlowLight);
-  const laptopAccent = new THREE.PointLight(0xffc87a, 2.5, 2.8);
-  laptopAccent.position.set(-2.05, 2.2, -0.52);
+  const laptopAccent = new THREE.PointLight(0xffc87a, 3.5, 2.8);
+  laptopAccent.position.set(-2.05, 1.9, -0.52);
   scene.add(laptopAccent);
 
   // ---- Coffee cup prop on table 2 ------------------------------------
@@ -803,12 +858,12 @@ function initHeroSilhouette() {
   handle.rotation.z = Math.PI / 2;
   handle.position.set(0.042, 0, 0);
   coffeeGroup.add(ccBody, ccSaucer, ccTop, handle);
-  coffeeGroup.position.set(STEAM_ORIGIN.x, 1.057, STEAM_ORIGIN.z);
+  coffeeGroup.position.set(STEAM_ORIGIN.x, 0.768, STEAM_ORIGIN.z);
   scene.add(coffeeGroup);
 
   // Warm accent above coffee cup so it reads clearly
-  const coffeeAccent = new THREE.PointLight(0xffc87a, 2.5, 2.6);
-  coffeeAccent.position.set(1.0, 2.2, -3.02);
+  const coffeeAccent = new THREE.PointLight(0xffc87a, 3.5, 2.6);
+  coffeeAccent.position.set(1.0, 1.9, -3.02);
   scene.add(coffeeAccent);
 
   // Small notepad beside the coffee
@@ -816,7 +871,7 @@ function initHeroSilhouette() {
     new THREE.BoxGeometry(0.14, 0.008, 0.10),
     new THREE.MeshStandardMaterial({ color: 0xf5f0e8, roughness: 0.95 })
   );
-  pad.position.set(1.34, 1.057, -2.62);
+  pad.position.set(1.34, 0.768, -2.62);
   pad.rotation.y = 0.4;
   scene.add(pad);
 
@@ -1070,7 +1125,7 @@ function initHeroSilhouette() {
     // Edison pendant flicker
     pendantLights.forEach((light, i) => {
       const f = 1 + Math.sin(t * 2.4 + i * 4.3) * 0.04;
-      light.intensity = (isSmallScreen ? 6.0 : 8.5) * f;
+      light.intensity = (isSmallScreen ? 8.0 : 10.0) * f;
     });
 
     // Screen glow pulse
