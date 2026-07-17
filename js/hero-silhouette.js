@@ -521,7 +521,7 @@ function initHeroSilhouette() {
   });
   renderer.outputColorSpace    = THREE.SRGBColorSpace;
   renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 3.6;
+  renderer.toneMappingExposure = 1.6;
   renderer.shadowMap.enabled   = !isSmallScreen;
   renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;  // rain clipping planes
@@ -553,9 +553,9 @@ function initHeroSilhouette() {
 
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(W, H),
-      isSmallScreen ? 0.22 : 0.46,  // strength
-      0.42,                          // radius
-      0.80                           // threshold — only very bright emitters bloom
+      isSmallScreen ? 0.10 : 0.20,  // strength — subtle, only true emitters
+      0.36,                          // radius
+      0.88                           // threshold — only the hottest pixels bloom
     );
     composer.addPass(bloom);
 
@@ -572,10 +572,10 @@ void main(){
   vec3 c = texture2D(tDiffuse, vUv).rgb;
   float luma = dot(c, vec3(0.299, 0.587, 0.114));
   // Warm shadow lift — deep amber in the darks, keep highlights clean
-  vec3 warmShadow = vec3(1.12, 0.92, 0.72);
-  c = mix(c * warmShadow, c, smoothstep(0.0, 0.52, luma));
+  vec3 warmShadow = vec3(1.06, 0.88, 0.68);
+  c = mix(c * warmShadow, c, smoothstep(0.0, 0.45, luma));
   // Mild saturation boost
-  c = mix(vec3(luma), c, 1.18);
+  c = mix(vec3(luma), c, 1.12);
   // Vignette
   vec2 d = vUv - 0.5;
   float vig = 1.0 - dot(d, d) * 2.65;
@@ -595,9 +595,9 @@ void main(){
   // ---- Lighting ------------------------------------------------------
   // Three Edison PointLights are the key light. Ambient is very dim so the
   // warmth reads as coming purely from the pendants.
-  const ambient = new THREE.AmbientLight(0xffd080, 6.0);
+  const ambient = new THREE.AmbientLight(0xffd080, 1.4);
   scene.add(ambient);
-  const fill = new THREE.DirectionalLight(0xffe0a0, 4.0);
+  const fill = new THREE.DirectionalLight(0xffe0a0, 1.2);
   fill.position.set(2, 6, 8);
   scene.add(fill);
 
@@ -614,7 +614,7 @@ void main(){
   const CORD_Y = 4.0;
 
   PENDANT_DEFS.forEach(({ x, z }) => {
-    const light = new THREE.PointLight(0xffb040, isSmallScreen ? 14.0 : 18.0, 12.0, 1.1);
+    const light = new THREE.PointLight(0xffb040, isSmallScreen ? 6.0 : 9.0, 10.0, 1.2);
     light.position.set(x, CORD_Y - 0.18, z);
     if (!isSmallScreen) {
       light.castShadow = true;
@@ -651,7 +651,7 @@ void main(){
 
     // Soft warm pool on the floor
     const poolMat = new THREE.MeshBasicMaterial({
-      map: radialTex, color: 0xff9840, transparent: true, opacity: 0.55, depthWrite: false,
+      map: radialTex, color: 0xff9840, transparent: true, opacity: 0.22, depthWrite: false,
     });
     poolMat.toneMapped = false;
     const pool = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 4.0), poolMat);
@@ -1545,7 +1545,7 @@ void main(){
     // Edison pendant flicker
     pendantLights.forEach((light, i) => {
       const f = 1 + Math.sin(t * 2.4 + i * 4.3) * 0.04;
-      light.intensity = (isSmallScreen ? 14.0 : 18.0) * f;
+      light.intensity = (isSmallScreen ? 6.0 : 9.0) * f;
     });
 
     // Screen glow pulse
