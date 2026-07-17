@@ -104,6 +104,114 @@ function createStylizedFigure(shirtImageUrl) {
   return { group: figure, torso, head, lA, rA, lL, rL, hips, isStylized: true };
 }
 
+// Geometry seated patron — laptop / coffee / idle role.
+// Returns { group, animatables:[{update(t)}], headGrp }.
+function createSeatedFigure({ role = 'idle', shirtImageUrl } = {}) {
+  const clothing = new THREE.MeshStandardMaterial({ color: 0x2a2825, roughness: 0.86 });
+  const skin     = new THREE.MeshStandardMaterial({ color: 0xc79a75, roughness: 0.70 });
+  const pants    = new THREE.MeshStandardMaterial({ color: 0x1e2030, roughness: 0.88 });
+  const hairMat  = new THREE.MeshStandardMaterial({ color: 0x150c06, roughness: 1.0 });
+  const root = new THREE.Group();
+  const animatables = [];
+
+  // Torso
+  const torsoGrp = new THREE.Group();
+  torsoGrp.position.set(0, 0.79, 0);
+  torsoGrp.rotation.x = 0.12;
+  torsoGrp.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.32, 4, 8), clothing));
+  root.add(torsoGrp);
+  if (shirtImageUrl) attachShirtPlane(torsoGrp, shirtImageUrl, 0.03, 0.21);
+
+  // Head + hair
+  const headGrp = new THREE.Group();
+  headGrp.position.set(0, 1.16, 0.02);
+  headGrp.add(new THREE.Mesh(new THREE.SphereGeometry(0.152, 12, 10), skin));
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.160, 10, 8), hairMat);
+  hair.scale.y = 0.74; hair.position.y = 0.055;
+  headGrp.add(hair);
+  root.add(headGrp);
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.066, 0.110, 8), skin);
+  neck.position.set(0, 1.035, 0.015);
+  root.add(neck);
+
+  // Thighs (horizontal → +Z)
+  [-0.115, 0.115].forEach(sx => {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.058, 0.37, 8), pants);
+    t.rotation.x = Math.PI / 2;
+    t.position.set(sx, 0.545, 0.185);
+    root.add(t);
+  });
+  // Shins
+  [-0.115, 0.115].forEach(sx => {
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.050, 0.040, 0.44, 8), pants);
+    s.position.set(sx, 0.30, 0.37);
+    root.add(s);
+  });
+  // Feet
+  [-0.115, 0.115].forEach(sx => {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.088, 0.046, 0.16), pants);
+    f.position.set(sx, 0.07, 0.43);
+    root.add(f);
+  });
+
+  // Arms — pivot at shoulder
+  const makeArm = (side) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.215, 1.005, 0.02);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.040, 0.25, 8), skin);
+    upper.position.y = -0.125;
+    pivot.add(upper);
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.25;
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.030, 0.23, 8), skin);
+    fore.position.y = -0.115;
+    elbow.add(fore);
+    pivot.add(elbow);
+    root.add(pivot);
+    return { pivot, elbow, fore };
+  };
+  const lArm = makeArm(-1);
+  const rArm = makeArm( 1);
+
+  if (role === 'laptop') {
+    lArm.pivot.rotation.set(1.08, 0, 0.12);  lArm.elbow.rotation.x = -0.40;
+    rArm.pivot.rotation.set(1.08, 0,-0.12);  rArm.elbow.rotation.x = -0.40;
+    headGrp.rotation.x = 0.24;
+    animatables.push({ update(t) {
+      lArm.fore.position.y = -0.115 + Math.sin(t * 4.4)       * 0.007;
+      rArm.fore.position.y = -0.115 + Math.sin(t * 4.4 + 1.9) * 0.007;
+      headGrp.rotation.x = 0.24 + Math.sin(t * 0.31) * 0.07;
+      headGrp.rotation.y = Math.sin(t * 0.20) * 0.10;
+    }});
+  } else if (role === 'coffee') {
+    lArm.pivot.rotation.set(1.05, 0, 0.10);  lArm.elbow.rotation.x = -0.38;
+    rArm.pivot.rotation.set(0.45, 0, 0);      rArm.elbow.rotation.x = -0.25;
+    animatables.push({ update(t) {
+      const cy = (t % 9.0) / 9.0;
+      let px = 0.45, ex = -0.25;
+      if      (cy < 0.22) { const p = cy / 0.22;         px = 0.45 + p*0.85; ex = -0.25 - p*0.60; }
+      else if (cy < 0.40) {                               px = 1.30;          ex = -0.85; }
+      else if (cy < 0.58) { const p = (cy-0.40)/0.18;   px = 1.30 - p*0.85; ex = -0.85 + p*0.60; }
+      rArm.pivot.rotation.x = px;
+      rArm.elbow.rotation.x = ex;
+      headGrp.rotation.y = Math.sin(t * 0.24) * 0.20;
+      headGrp.rotation.x = 0.05 + Math.sin(t * 0.18) * 0.06;
+    }});
+  } else {
+    lArm.pivot.rotation.x = 0.30;
+    rArm.pivot.rotation.x = 0.30;
+    animatables.push({ update(t) {
+      headGrp.rotation.y = Math.sin(t * 0.19) * 0.22;
+      headGrp.rotation.x = Math.sin(t * 0.13) * 0.06;
+    }});
+  }
+
+  root.traverse(o => { if (o.isMesh) { o.castShadow = !isSmallScreen; o.receiveShadow = !isSmallScreen; } });
+  return { group: root, animatables, headGrp };
+}
+
 function makeRadialTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
@@ -389,6 +497,7 @@ function initHeroSilhouette() {
   const PENDANT_DEFS  = [
     { x: -2.0, z: -0.5 },   // above laptop table
     { x:  1.2, z: -2.8 },   // above coffee table
+    { x:  3.0, z: -4.0 },   // above 3rd table
     { x:  4.5, z: -4.6 },   // above counter
   ];
   const pendantLights    = [];
@@ -465,11 +574,48 @@ function initHeroSilhouette() {
   backWall.position.set(0, 2.1, -8);
   scene.add(backWall);
 
-  // Right wall (x = +7; faces -X → rotation.y = +PI/2)
-  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 4.2), wallMat);
-  rightWall.rotation.y = Math.PI / 2;
-  rightWall.position.set(7, 2.1, 0);
-  scene.add(rightWall);
+  // Right wall split around door opening at z=0..1, y=0..2.5
+  const DOOR_X = 7.0, DOOR_Z_MID = 0.50, DOOR_W = 1.05, DOOR_H = 2.50;
+  const rw = (zc, zw, yc, yh) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(zw, yh), wallMat);
+    m.rotation.y = Math.PI / 2;
+    m.position.set(DOOR_X, yc, zc);
+    scene.add(m);
+  };
+  rw(-4.5,  9.0, 2.1, 4.2);          // far side (away from door)
+  rw( 3.5,  5.0, 2.1, 4.2);          // near side (toward camera)
+  rw(DOOR_Z_MID, DOOR_W, DOOR_H+(4.2-DOOR_H)/2, 4.2-DOOR_H); // above door
+  rw(DOOR_Z_MID - DOOR_W*0.5 - 0.1, 0.2, 2.1, 4.2); // thin fill left of door
+  rw(DOOR_Z_MID + DOOR_W*0.5 + 0.1, 0.2, 2.1, 4.2); // thin fill right of door
+
+  // Door frame + swinging panel
+  const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.80 });
+  const doorPanelMat = new THREE.MeshStandardMaterial({ color: 0x7a5430, roughness: 0.72 });
+  const doorGlassMat = new THREE.MeshStandardMaterial({
+    color: 0x8899aa, transparent: true, opacity: 0.22, roughness: 0.08,
+  });
+  // Posts
+  const dz0 = DOOR_Z_MID - DOOR_W / 2, dz1 = DOOR_Z_MID + DOOR_W / 2;
+  [dz0, dz1].forEach(pz => {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, DOOR_H + 0.2, 0.08), doorFrameMat);
+    post.position.set(DOOR_X, (DOOR_H + 0.2) / 2, pz);
+    scene.add(post);
+  });
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, DOOR_W + 0.16), doorFrameMat);
+  lintel.position.set(DOOR_X, DOOR_H + 0.04, DOOR_Z_MID);
+  scene.add(lintel);
+
+  // Swinging door pivot (hinge at dz0 side)
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(DOOR_X, 0, dz0);
+  const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.05, DOOR_H - 0.04, DOOR_W - 0.06), doorPanelMat);
+  doorPanel.position.set(0, (DOOR_H - 0.04) / 2, (DOOR_W - 0.06) / 2);
+  const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(DOOR_W * 0.52, DOOR_H * 0.32), doorGlassMat);
+  doorGlass.rotation.y = -Math.PI / 2;
+  doorGlass.position.set(-0.028, DOOR_H * 0.68, (DOOR_W - 0.06) / 2);
+  doorPivot.add(doorPanel, doorGlass);
+  scene.add(doorPivot);
+  let doorAngle = 0, doorTargetAngle = 0;
 
   // Left wall split around window opening.
   // Window: z ∈ [winZlo, winZhi],  y ∈ [winYlo, winYhi]
@@ -724,6 +870,11 @@ function initHeroSilhouette() {
   buildChair( 1.2 + 0.60, -2.8 + 0.05, Math.PI * 0.90);
   buildChair( 1.2 - 0.58, -2.8 - 0.05, Math.PI * 0.10);
 
+  // Table 3 — dynamic customer slot
+  buildTable(3.0, -4.0);
+  buildChair(3.0 + 0.62, -4.0 + 0.05, Math.PI * 0.80);
+  buildChair(3.0 - 0.60, -4.0 - 0.05, Math.PI * 0.15);
+
   // Counter surface and body
   const cTopMat   = new THREE.MeshStandardMaterial({ color: 0x6a3c16, roughness: 0.70 });
   const cFrontMat = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.82 });
@@ -881,6 +1032,162 @@ function initHeroSilhouette() {
   let usingGLTFHumans = false;
   window.__EV_DEBUG = {};
 
+  // Patron table slots — seated geometry figures with lifecycle.
+  const CUSTOMER_SLOTS = [
+    { x: -2.0, z: -0.5,  ry: Math.PI * 0.87,  role: 'laptop', femaleOnly: false },
+    { x:  1.2, z: -2.8,  ry: Math.PI * 0.82,  role: 'coffee', femaleOnly: true  },
+    { x:  3.0, z: -4.0,  ry: Math.PI * 0.75,  role: 'idle',   femaleOnly: false },
+  ];
+  // Barista stays as GLB at the counter.
+  const BARISTA_SPOT = { x: 4.8, z: -4.8, ry: -Math.PI * 0.42, gender: "remy" };
+
+  // Door position (spawn / despawn point for walking customers)
+  const DOOR_SPAWN = new THREE.Vector3(6.2, 0, DOOR_Z_MID);
+  const WALK_SPEED = 0.90; // units per second
+
+  // --- Seat customer state machine ---
+  // States: OCCUPIED → LEAVING → EMPTY → ARRIVING
+  const customerSlots = CUSTOMER_SLOTS.map((slot, i) => ({
+    slot,
+    state: 'OCCUPIED',
+    seatedFig: null,
+    seatedAnimatables: [],
+    walkFig: null,
+    walkStFig: null,       // ref to stylized fig for limb animation
+    walkFrom: new THREE.Vector3(),
+    walkTo:   new THREE.Vector3(),
+    walkDuration: 3.0,
+    walkProgress: 0,
+    stayTimer: 38 + i * 14 + Math.random() * 20,
+    emptyTimer: 0,
+    productIdx: i % SHIRT_PRODUCTS.length,
+  }));
+
+  function pickProduct(femaleOnly) {
+    const pool = femaleOnly
+      ? SHIRT_PRODUCTS.filter(p => p.femaleOnly)
+      : SHIRT_PRODUCTS.filter(p => !p.femaleOnly);
+    return (pool.length ? pool : SHIRT_PRODUCTS)[Math.floor(Math.random() * (pool.length || SHIRT_PRODUCTS.length))];
+  }
+
+  function spawnSeated(cs) {
+    const product = pickProduct(cs.slot.femaleOnly);
+    const roles   = cs.slot.role === 'idle'
+      ? (Math.random() < 0.5 ? 'laptop' : 'coffee')
+      : cs.slot.role;
+    const fig = createSeatedFigure({ role: roles, shirtImageUrl: product.image });
+    fig.group.position.set(cs.slot.x, 0, cs.slot.z);
+    fig.group.rotation.y = cs.slot.ry;
+    scene.add(fig.group);
+    cs.seatedFig        = fig.group;
+    cs.seatedAnimatables = fig.animatables;
+    cs.productId         = product.id;
+    npcs.push({ group: fig.group, productId: product.id });
+  }
+
+  function removeSeated(cs) {
+    if (!cs.seatedFig) return;
+    scene.remove(cs.seatedFig);
+    const idx = npcs.findIndex(n => n.group === cs.seatedFig);
+    if (idx !== -1) npcs.splice(idx, 1);
+    cs.seatedFig = null;
+    cs.seatedAnimatables = [];
+  }
+
+  function spawnWalker(cs, fromPos, toPos) {
+    const product = pickProduct(cs.slot.femaleOnly);
+    const sf = createStylizedFigure(product.image);
+    const dx = toPos.x - fromPos.x, dz = toPos.z - fromPos.z;
+    sf.group.position.copy(fromPos);
+    sf.group.rotation.y = Math.atan2(dx, dz);
+    scene.add(sf.group);
+    cs.walkFig      = sf.group;
+    cs.walkStFig    = sf;
+    cs.walkFrom.copy(fromPos);
+    cs.walkTo.copy(toPos);
+    cs.walkDuration = fromPos.distanceTo(toPos) / WALK_SPEED;
+    cs.walkProgress = 0;
+  }
+
+  function removeWalker(cs) {
+    if (!cs.walkFig) return;
+    scene.remove(cs.walkFig);
+    cs.walkFig = null; cs.walkStFig = null;
+  }
+
+  function updateCustomers(dt, t) {
+    let anyoneAtDoor = false;
+    customerSlots.forEach((cs, i) => {
+      switch (cs.state) {
+
+        case 'OCCUPIED':
+          cs.seatedAnimatables.forEach(a => a.update(t + i * 3.7));
+          cs.stayTimer -= dt;
+          if (cs.stayTimer <= 0) {
+            removeSeated(cs);
+            const toPos = DOOR_SPAWN.clone();
+            spawnWalker(cs, new THREE.Vector3(cs.slot.x, 0, cs.slot.z), toPos);
+            cs.state = 'LEAVING';
+          }
+          break;
+
+        case 'LEAVING':
+          anyoneAtDoor = true;
+          cs.walkProgress += dt / cs.walkDuration;
+          if (cs.walkProgress >= 1) {
+            removeWalker(cs);
+            cs.state      = 'EMPTY';
+            cs.emptyTimer = 6 + Math.random() * 10;
+          } else {
+            cs.walkFig.position.lerpVectors(cs.walkFrom, cs.walkTo, cs.walkProgress);
+            animateWalkLimbs(cs, t);
+          }
+          break;
+
+        case 'EMPTY':
+          cs.emptyTimer -= dt;
+          if (cs.emptyTimer <= 0) {
+            spawnWalker(cs, DOOR_SPAWN.clone(), new THREE.Vector3(cs.slot.x, 0, cs.slot.z));
+            cs.state = 'ARRIVING';
+          }
+          break;
+
+        case 'ARRIVING':
+          anyoneAtDoor = true;
+          cs.walkProgress += dt / cs.walkDuration;
+          if (cs.walkProgress >= 1) {
+            removeWalker(cs);
+            spawnSeated(cs);
+            cs.state     = 'OCCUPIED';
+            cs.stayTimer = 35 + Math.random() * 45;
+          } else {
+            cs.walkFig.position.lerpVectors(cs.walkFrom, cs.walkTo, cs.walkProgress);
+            animateWalkLimbs(cs, t);
+          }
+          break;
+      }
+    });
+
+    // Door swings open when anyone is near it
+    doorTargetAngle = anyoneAtDoor ? -Math.PI * 0.55 : 0;
+    doorAngle += (doorTargetAngle - doorAngle) * Math.min(1, dt * 3.5);
+    doorPivot.rotation.y = doorAngle;
+  }
+
+  function animateWalkLimbs(cs, t) {
+    if (!cs.walkStFig) return;
+    const sf = cs.walkStFig;
+    const ph = cs.walkProgress * cs.walkDuration * 3.8;
+    if (sf.lL) sf.lL.upperGroup.rotation.x = Math.sin(ph)         * 0.50;
+    if (sf.rL) sf.rL.upperGroup.rotation.x = Math.sin(ph + Math.PI) * 0.50;
+    if (sf.lA) sf.lA.upperGroup.rotation.x = Math.sin(ph + Math.PI) * 0.28;
+    if (sf.rA) sf.rA.upperGroup.rotation.x = Math.sin(ph)         * 0.28;
+  }
+
+  // Initialise seats immediately (no waiting for GLBs)
+  customerSlots.forEach(cs => spawnSeated(cs));
+
+  // ---- GLB barista only -----------------------------------------------
   const PEOPLE = {
     remy: {
       url: "models/people/remy.glb",
@@ -898,14 +1205,6 @@ function initHeroSilhouette() {
     },
   };
 
-  // Three occupants: laptop patron (male), coffee patron (female), barista (male).
-  // Walk clip runs at timeScale 0.07 — barely-visible idle micro-sway.
-  const CAFE_SPOTS = [
-    { x: -2.0, z: -0.5, ry: Math.PI * 0.87,  gender: "remy",  role: "laptop"  },
-    { x:  1.2, z: -2.8, ry: Math.PI * 0.82,  gender: "woman", role: "coffee"  },
-    { x:  4.8, z: -4.8, ry: -Math.PI * 0.42, gender: "remy",  role: "barista" },
-  ];
-
   const contactShadowMats = [];
 
   function buildHuman(spec, base, walkClip, teeImage, baseShirtImage) {
@@ -913,7 +1212,6 @@ function initHeroSilhouette() {
     const group     = new THREE.Group();
     group.add(cloned);
     const sizeScale = fitHuman(cloned, group, spec.height);
-
     if (spec.shirtMesh && spec.tee) {
       cloned.traverse((o) => {
         if (o.isMesh && o.name === spec.shirtMesh) {
@@ -925,7 +1223,6 @@ function initHeroSilhouette() {
         }
       });
     }
-
     if (!isSmallScreen) {
       cloned.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) o.castShadow = true; });
     } else {
@@ -939,8 +1236,7 @@ function initHeroSilhouette() {
       group.add(blob);
       contactShadowMats.push(blobMat);
     }
-
-    const mixer     = new THREE.AnimationMixer(cloned);
+    const mixer    = new THREE.AnimationMixer(cloned);
     const walkAction = walkClip ? mixer.clipAction(walkClip) : null;
     if (walkAction) {
       walkAction.play();
@@ -949,17 +1245,6 @@ function initHeroSilhouette() {
       mixer.update(0);
     }
     return { group, mixer, cloned, walkAction, sizeScale, isStylized: false };
-  }
-
-  function spawnStylizedFallback() {
-    CAFE_SPOTS.forEach((spot, i) => {
-      const product = SHIRT_PRODUCTS[i % SHIRT_PRODUCTS.length];
-      const fig = createStylizedFigure(product.image);
-      fig.group.position.set(spot.x, 0, spot.z);
-      fig.group.rotation.y = spot.ry;
-      scene.add(fig.group);
-      npcs.push({ ...fig, productId: product.id });
-    });
   }
 
   const dracoLoader = new DRACOLoader();
@@ -972,12 +1257,10 @@ function initHeroSilhouette() {
 
   Promise.all([
     loadGLB(PEOPLE.remy.url),
-    loadGLB(PEOPLE.woman.url),
     Promise.all(SHIRT_PRODUCTS.map((p) => loadImage(p.image))),
-  ]).then(([remyG, womanG, teeImages]) => {
+  ]).then(([remyG, teeImages]) => {
     usingGLTFHumans = true;
     const walkRemy = stripRootMotion(remyG.animations[0]);
-
     const getShirtImage = (gltf, meshName) => {
       let img = null;
       gltf.scene.traverse((o) => {
@@ -988,37 +1271,20 @@ function initHeroSilhouette() {
       });
       return img;
     };
-    const remyShirtImg  = getShirtImage(remyG,  PEOPLE.remy.shirtMesh);
-    const womanShirtImg = getShirtImage(womanG, PEOPLE.woman.shirtMesh);
-
-    const outfits     = SHIRT_PRODUCTS.map((p, i) => ({ ...p, teeImage: teeImages[i] }));
-    const maleOutfits = outfits.filter((o) => !o.femaleOnly);
-    const femOutfits  = outfits.filter((o) =>  o.femaleOnly);
-    const femPool     = femOutfits.length ? femOutfits : outfits;
-    let maleCur = 0, femCur = 0;
-
-    CAFE_SPOTS.forEach((spot) => {
-      const isFem    = spot.gender === "woman";
-      const spec     = isFem ? PEOPLE.woman : PEOPLE.remy;
-      const src      = isFem ? womanG  : remyG;
-      const shirtImg = isFem ? womanShirtImg : remyShirtImg;
-      const walk     = isFem
-        ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
-        : walkRemy;
-      const outfit   = isFem
-        ? femPool[femCur++ % femPool.length]
-        : maleOutfits[maleCur++ % maleOutfits.length];
-
-      const fig = buildHuman(spec, src, walk, outfit.teeImage, shirtImg);
-      fig.group.position.set(spot.x, 0, spot.z);
-      fig.group.rotation.y = spot.ry;
-      scene.add(fig.group);
-      npcs.push({ ...fig, productId: outfit.id, role: spot.role });
-    });
+    const remyShirtImg = getShirtImage(remyG, PEOPLE.remy.shirtMesh);
+    const maleOutfits  = SHIRT_PRODUCTS
+      .map((p, i) => ({ ...p, teeImage: teeImages[i] }))
+      .filter(o => !o.femaleOnly);
+    const baristaOutfit = maleOutfits[maleOutfits.length - 1];
+    const fig = buildHuman(PEOPLE.remy, remyG, walkRemy, baristaOutfit.teeImage, remyShirtImg);
+    fig.group.position.set(BARISTA_SPOT.x, 0, BARISTA_SPOT.z);
+    fig.group.rotation.y = BARISTA_SPOT.ry;
+    scene.add(fig.group);
+    npcs.push({ ...fig, productId: baristaOutfit.id });
     window.__EV_DEBUG.npcs = npcs;
   }).catch((err) => {
-    console.warn("EL VYNCE hero: GLB load failed, using stylized fallback:", err);
-    spawnStylizedFallback();
+    console.warn("EL VYNCE hero: barista GLB failed:", err);
+    // Barista falls back silently — seated patrons already showing.
   });
 
   // ---- Interaction ---------------------------------------------------
@@ -1134,7 +1400,10 @@ function initHeroSilhouette() {
     // Machine LED pulse
     machLedMat.opacity = 0.55 + Math.sin(t * 1.4) * 0.35;
 
-    // NPC idle sway
+    // Seated figure animations + customer lifecycle
+    updateCustomers(dt, t);
+
+    // Barista GLB idle sway
     npcs.forEach((npc) => { if (npc.mixer) npc.mixer.update(dt); });
 
     // Cursor parallax (eased)
