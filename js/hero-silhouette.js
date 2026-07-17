@@ -121,7 +121,7 @@ function makeWoodTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#3a1e08";
+  g.fillStyle = "#6b3c14";
   g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 14; i++) {
     g.fillStyle = "rgba(0,0,0,0.28)";
@@ -143,7 +143,7 @@ function makeWallTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 256;
   const g = c.getContext("2d");
-  g.fillStyle = "#2a1c10";
+  g.fillStyle = "#4e3018";
   g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 300; i++) {
     g.fillStyle = Math.random() < 0.5 ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.02)";
@@ -330,7 +330,7 @@ function initHeroSilhouette() {
   });
   renderer.outputColorSpace    = THREE.SRGBColorSpace;
   renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.65;
+  renderer.toneMappingExposure = 2.4;
   renderer.shadowMap.enabled   = !isSmallScreen;
   renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;  // rain clipping planes
@@ -356,10 +356,10 @@ function initHeroSilhouette() {
   // ---- Lighting ------------------------------------------------------
   // Three Edison PointLights are the key light. Ambient is very dim so the
   // warmth reads as coming purely from the pendants.
-  const ambient = new THREE.AmbientLight(0x3a2010, 1.40);
+  const ambient = new THREE.AmbientLight(0x9a6030, 2.8);
   scene.add(ambient);
-  const fill = new THREE.DirectionalLight(0x4a2c14, 0.55);
-  fill.position.set(-5, 4, 3);
+  const fill = new THREE.DirectionalLight(0xb87840, 1.2);
+  fill.position.set(-3, 5, 6);
   scene.add(fill);
 
   const radialTex = makeRadialTexture();
@@ -374,7 +374,7 @@ function initHeroSilhouette() {
   const CORD_Y = 4.0;
 
   PENDANT_DEFS.forEach(({ x, z }) => {
-    const light = new THREE.PointLight(0xff9a3c, isSmallScreen ? 4.5 : 6.0, 9.0, 1.4);
+    const light = new THREE.PointLight(0xff9a3c, isSmallScreen ? 6.0 : 8.5, 11.0, 1.2);
     light.position.set(x, CORD_Y - 0.18, z);
     if (!isSmallScreen) {
       light.castShadow = true;
@@ -411,7 +411,7 @@ function initHeroSilhouette() {
 
     // Soft warm pool on the floor
     const poolMat = new THREE.MeshBasicMaterial({
-      map: radialTex, color: 0xff9840, transparent: true, opacity: 0.35, depthWrite: false,
+      map: radialTex, color: 0xff9840, transparent: true, opacity: 0.55, depthWrite: false,
     });
     poolMat.toneMapped = false;
     const pool = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 4.0), poolMat);
@@ -640,30 +640,52 @@ function initHeroSilhouette() {
   }
 
   // ---- Furniture & props ---------------------------------------------
-  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x1e1208, roughness: 0.85 });
-  const metalMat    = new THREE.MeshStandardMaterial({ color: 0x252525, roughness: 0.68, metalness: 0.32 });
+  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x5a3418, roughness: 0.80 });
+  const metalMat    = new THREE.MeshStandardMaterial({ color: 0x4a4040, roughness: 0.60, metalness: 0.45 });
+  const stoolMat    = new THREE.MeshStandardMaterial({ color: 0x3a2810, roughness: 0.82 });
 
-  // Bar-height round tables (top surface at y = 1.05).
-  // Standing figures at waist height = naturally "working at a counter" café posture.
+  // Round tables — top at y=1.05
   function buildBarTable(x, z) {
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.44, 0.06, 16), darkWoodMat);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.44, 0.05, 20), darkWoodMat);
     top.position.set(x, 1.05, z);
     top.castShadow = !isSmallScreen;
     scene.add(top);
-    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.075, 1.00, 8), metalMat);
-    ped.position.set(x, 0.50, z);
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.065, 1.02, 8), metalMat);
+    ped.position.set(x, 0.51, z);
     scene.add(ped);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.018, 8, 20), metalMat);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.014, 8, 20), metalMat);
     ring.rotation.x = Math.PI / 2;
-    ring.position.set(x, 0.16, z);
+    ring.position.set(x, 0.18, z);
     scene.add(ring);
   }
-  buildBarTable(-2.0, -0.5);  // laptop patron
-  buildBarTable( 1.2, -2.8);  // coffee patron
+  buildBarTable(-2.0, -0.5);
+  buildBarTable( 1.2, -2.8);
+
+  // Minimal bar stools — thin disc seat, single pedestal, footrest ring.
+  // Seat at y=0.74 (bar height). Two stools per table, offset so they don't clip.
+  function buildStool(x, z) {
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.030, 16), stoolMat);
+    seat.position.set(x, 0.74, z);
+    seat.castShadow = !isSmallScreen;
+    scene.add(seat);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.028, 0.72, 8), metalMat);
+    leg.position.set(x, 0.36, z);
+    scene.add(leg);
+    const foot = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.010, 8, 16), metalMat);
+    foot.rotation.x = Math.PI / 2;
+    foot.position.set(x, 0.20, z);
+    scene.add(foot);
+  }
+  // Table 1 (laptop) — two stools flanking
+  buildStool(-2.0 + 0.60,  -0.5 + 0.10);
+  buildStool(-2.0 - 0.55,  -0.5 - 0.10);
+  // Table 2 (coffee) — two stools flanking
+  buildStool( 1.2 + 0.58,  -2.8 + 0.08);
+  buildStool( 1.2 - 0.52,  -2.8 - 0.08);
 
   // Counter surface and body
-  const cTopMat   = new THREE.MeshStandardMaterial({ color: 0x1e1208, roughness: 0.78 });
-  const cFrontMat = new THREE.MeshStandardMaterial({ color: 0x160e06, roughness: 0.92 });
+  const cTopMat   = new THREE.MeshStandardMaterial({ color: 0x4a2c10, roughness: 0.75 });
+  const cFrontMat = new THREE.MeshStandardMaterial({ color: 0x3a2008, roughness: 0.88 });
 
   const ctop = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 6.5), cTopMat);
   ctop.position.set(4.7, 0.97, -4.6);
@@ -681,10 +703,10 @@ function initHeroSilhouette() {
   cstrip.position.set(4.21, 0.97, -4.6);
   scene.add(cstrip);
 
-  // Darker wall section behind counter
+  // Wall section behind counter
   const cwall = new THREE.Mesh(
     new THREE.PlaneGeometry(3.0, 4.2),
-    new THREE.MeshStandardMaterial({ color: 0x0e0a06, roughness: 1 })
+    new THREE.MeshStandardMaterial({ color: 0x2e1c0a, roughness: 0.95 })
   );
   cwall.rotation.y = -Math.PI / 2;
   cwall.position.set(6.98, 2.1, -4.6);
@@ -750,10 +772,13 @@ function initHeroSilhouette() {
   laptopGroup.rotation.y = -0.25;
   scene.add(laptopGroup);
 
-  // Soft blue screen-glow light
-  const screenGlowLight = new THREE.PointLight(0x3355cc, 0.55, 1.8);
+  // Soft blue screen-glow + warm accent above laptop so it reads clearly
+  const screenGlowLight = new THREE.PointLight(0x3355cc, 1.2, 2.2);
   screenGlowLight.position.set(-2.2, 1.50, -0.55);
   scene.add(screenGlowLight);
+  const laptopAccent = new THREE.PointLight(0xffc87a, 2.5, 2.8);
+  laptopAccent.position.set(-2.05, 2.2, -0.52);
+  scene.add(laptopAccent);
 
   // ---- Coffee cup prop on table 2 ------------------------------------
   const coffeeMat = new THREE.MeshStandardMaterial({ color: 0xede5d5, roughness: 0.62 });
@@ -780,6 +805,11 @@ function initHeroSilhouette() {
   coffeeGroup.add(ccBody, ccSaucer, ccTop, handle);
   coffeeGroup.position.set(STEAM_ORIGIN.x, 1.057, STEAM_ORIGIN.z);
   scene.add(coffeeGroup);
+
+  // Warm accent above coffee cup so it reads clearly
+  const coffeeAccent = new THREE.PointLight(0xffc87a, 2.5, 2.6);
+  coffeeAccent.position.set(1.0, 2.2, -3.02);
+  scene.add(coffeeAccent);
 
   // Small notepad beside the coffee
   const pad = new THREE.Mesh(
@@ -1040,7 +1070,7 @@ function initHeroSilhouette() {
     // Edison pendant flicker
     pendantLights.forEach((light, i) => {
       const f = 1 + Math.sin(t * 2.4 + i * 4.3) * 0.04;
-      light.intensity = (isSmallScreen ? 4.5 : 6.0) * f;
+      light.intensity = (isSmallScreen ? 6.0 : 8.5) * f;
     });
 
     // Screen glow pulse
