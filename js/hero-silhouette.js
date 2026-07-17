@@ -352,7 +352,7 @@ function initHeroSilhouette() {
   });
   renderer.outputColorSpace    = THREE.SRGBColorSpace;
   renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 3.2;
+  renderer.toneMappingExposure = 4.5;
   renderer.shadowMap.enabled   = !isSmallScreen;
   renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;  // rain clipping planes
@@ -362,25 +362,25 @@ function initHeroSilhouette() {
   // Eye-level view from the doorway: counter left, tables right, window far-left.
   // Matches the reference café composition — warm and inviting, not overhead.
   const BASE_CAM_POS    = isSmallScreen
-    ? new THREE.Vector3( 1.0, 1.9, 9.5)
-    : new THREE.Vector3( 1.5, 2.0, 9.8);
+    ? new THREE.Vector3( 0.5, 1.7, 5.5)
+    : new THREE.Vector3( 0.5, 1.7, 5.0);
   const BASE_CAM_TARGET = isSmallScreen
-    ? new THREE.Vector3(-1.5, 1.0, -1.5)
-    : new THREE.Vector3(-1.0, 1.0, -2.0);
-  const SCROLL_CAM_POS    = new THREE.Vector3( 0.5, 4.5, 13.0);
+    ? new THREE.Vector3(-0.5, 1.0, -1.5)
+    : new THREE.Vector3(-0.5, 1.0, -1.5);
+  const SCROLL_CAM_POS    = new THREE.Vector3( 0.5, 4.5, 9.0);
   const SCROLL_CAM_TARGET = new THREE.Vector3(-1.0, 1.0, -2.0);
   const DRIFT_X = 0.12, DRIFT_Y = 0.05, DRIFT_SPD = 0.04;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 65 : 58, W / H, 0.1, 60);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 60 : 52, W / H, 0.1, 60);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
   // ---- Lighting ------------------------------------------------------
   // Three Edison PointLights are the key light. Ambient is very dim so the
   // warmth reads as coming purely from the pendants.
-  const ambient = new THREE.AmbientLight(0xffd080, 3.5);
+  const ambient = new THREE.AmbientLight(0xffd080, 6.0);
   scene.add(ambient);
-  const fill = new THREE.DirectionalLight(0xffe0a0, 2.0);
+  const fill = new THREE.DirectionalLight(0xffe0a0, 4.0);
   fill.position.set(2, 6, 8);
   scene.add(fill);
 
@@ -396,7 +396,7 @@ function initHeroSilhouette() {
   const CORD_Y = 4.0;
 
   PENDANT_DEFS.forEach(({ x, z }) => {
-    const light = new THREE.PointLight(0xffb040, isSmallScreen ? 8.0 : 10.0, 12.0, 1.1);
+    const light = new THREE.PointLight(0xffb040, isSmallScreen ? 14.0 : 18.0, 12.0, 1.1);
     light.position.set(x, CORD_Y - 0.18, z);
     if (!isSmallScreen) {
       light.castShadow = true;
@@ -1125,7 +1125,7 @@ function initHeroSilhouette() {
     // Edison pendant flicker
     pendantLights.forEach((light, i) => {
       const f = 1 + Math.sin(t * 2.4 + i * 4.3) * 0.04;
-      light.intensity = (isSmallScreen ? 8.0 : 10.0) * f;
+      light.intensity = (isSmallScreen ? 14.0 : 18.0) * f;
     });
 
     // Screen glow pulse
