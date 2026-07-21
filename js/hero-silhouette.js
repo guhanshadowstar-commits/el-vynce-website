@@ -3,10 +3,11 @@
    sky-reflection facades, real sidewalks + curbs + streetlamps + planters,
    a working pedestrian signal that gathers commuters at the curb and releases
    them across the road in waves, real Mixamo humans wearing the actual product
-   tees (fabric-dyed + chest print composited), a street dancer, a bench
-   sitter, a sidewalk conversation pair. Time of day AND crowd density are
-   driven by the visitor's real local clock — morning/evening rush is full,
-   midday lighter, night sparse with lit windows and lamp pools. Desktop gets
+   tees (fabric-dyed + chest print composited), a street dancer — a small,
+   deliberately light crowd (3-4 figures total) so it stays fast on mobile.
+   Time of day AND crowd density are driven by the visitor's real local clock —
+   morning/evening rush is full, midday lighter, night sparse with lit windows
+   and lamp pools. Desktop gets
    true directional sun shadows + ACES film tone mapping; phones get soft
    contact shadows and trimmed counts. Falls back to stylized procedural
    figures if the GLBs fail, so the hero never breaks. Interactive: click a
@@ -37,10 +38,11 @@ const SHIRT_PRODUCTS = [
 
 const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for perf.
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
-// Commuter walkers (the rush-hour stream). Dancer, bench sitter and the
-// conversation pair are added on top of these.
-const WALKER_COUNT = isSmallScreen ? 3 : 5;
-const FIGURE_COUNT = isSmallScreen ? 3 : 5; // stylized fallback crowd size
+// Commuter walkers (the rush-hour stream). The dancer is added on top of
+// these. 2-3 walkers + the dancer = 3-4 figures total on screen, scaled
+// down on mobile for both a lighter crowd and lighter GPU load.
+const WALKER_COUNT = isSmallScreen ? 2 : 3;
+const FIGURE_COUNT = isSmallScreen ? 3 : 4; // stylized fallback crowd size
 // Horizontal reach of the sun/moon arc: the narrow portrait frustum can only
 // see ~±8 world units at the sky plane, so the arc is tightened on phones.
 const CELESTIAL_X = isSmallScreen ? 6 : 15;
@@ -1204,13 +1206,6 @@ function initHeroSilhouette() {
       tee: { x: 150, y: 310, w: 210, h: 300, rot: 0, whiten: true },
       height: 1.78,
     },
-    woman: {
-      url: "models/people/woman.glb",
-      prefix: "mixamorig2",
-      shirtMesh: "Ch22_Shirt",
-      tee: { x: 285, y: 135, w: 180, h: 115, rot: Math.PI, whiten: false },
-      height: 1.65,
-    },
     dancer: {
       url: "models/people/dancer.glb",
       prefix: "mixamorig9",
@@ -1683,19 +1678,16 @@ function initHeroSilhouette() {
 
   Promise.all([
     loadGLB(PEOPLE.remy.url),
-    loadGLB(PEOPLE.woman.url),
     loadGLB(PEOPLE.dancer.url),
     loadGLB(ANIM_URLS.trip).catch(() => null),
     Promise.all(SHIRT_PRODUCTS.map((p) => loadImage(p.image))),
-  ]).then(([remyG, womanG, dancerG, tripG, teeImages]) => {
+  ]).then(([remyG, dancerG, tripG, teeImages]) => {
     usingGLTFHumans = true;
 
     // Ground speed baked into the walk clip, measured before pinning the hips.
     const strideRaw = measureStrideSpeed(remyG.scene, remyG.animations[0]);
     const walkRemy = stripRootMotion(remyG.animations[0]);
 
-    // Base shirt image for the woman (drawn under the design); Remy's shirt
-    // is whitened so his base image is only used for canvas sizing.
     const getShirtImage = (gltf, meshName) => {
       let img = null;
       gltf.scene.traverse((o) => {
@@ -1707,7 +1699,6 @@ function initHeroSilhouette() {
       return img;
     };
     const remyShirtImg = getShirtImage(remyG, PEOPLE.remy.shirtMesh);
-    const womanShirtImg = getShirtImage(womanG, PEOPLE.woman.shirtMesh);
 
     // Event clip library, retargeted per rig prefix. Trip gets a wider,
     // asymmetric band so the stumble's downward "falling" dip still reads,
@@ -1717,30 +1708,19 @@ function initHeroSilhouette() {
       trip: tripClip && retargetClip(tripClip, ANIM_SOURCE_PREFIX, prefix, root),
     });
 
-    // Wardrobe logic: femaleOnly designs (crop tops) go ONLY on the woman rig.
-    // Men cycle through the baggy tees exclusively — crop tops must never appear
-    // on a male body. Women ONLY wear the femaleOnly crop-top designs; if there
-    // aren't enough female designs to cover all women they cycle back to start.
+    // Every walker wears one of the non-femaleOnly (baggy tee) designs,
+    // cycling back to the start once they've all been used.
     const outfits = SHIRT_PRODUCTS.map((p, idx) => ({ ...p, teeImage: teeImages[idx] }));
-    const maleOutfits   = outfits.filter((o) => !o.femaleOnly); // baggy tees only
-    const femaleOutfits = outfits.filter((o) =>  o.femaleOnly); // crop tops only
-    // Safety: if no femaleOnly designs exist fall back to all outfits for women.
-    const femalePool = femaleOutfits.length ? femaleOutfits : outfits;
+    const maleOutfits = outfits.filter((o) => !o.femaleOnly);
     let maleCursor = 0;
-    let femaleCursor = 0;
 
     // ---- The commuter stream ----
     for (let i = 0; i < WALKER_COUNT; i++) {
-      const useWoman = i % 3 === 2; // every third commuter is the woman
-      const spec = useWoman ? PEOPLE.woman : PEOPLE.remy;
-      const src = useWoman ? womanG : remyG;
-      const shirtImg = useWoman ? womanShirtImg : remyShirtImg;
-      const walk = useWoman
-        ? retargetClip(walkRemy, PEOPLE.remy.prefix, PEOPLE.woman.prefix, src.scene)
-        : walkRemy;
-      const outfit = useWoman
-        ? femalePool[femaleCursor++ % femalePool.length]
-        : maleOutfits[maleCursor++ % maleOutfits.length];
+      const spec = PEOPLE.remy;
+      const src = remyG;
+      const shirtImg = remyShirtImg;
+      const walk = walkRemy;
+      const outfit = maleOutfits[maleCursor++ % maleOutfits.length];
       const fig = buildHuman(spec, src, walk, outfit.teeImage, shirtImg);
       const baseSpeed = strideRaw > 0.01
         ? strideRaw * fig.sizeScale
@@ -1748,9 +1728,11 @@ function initHeroSilhouette() {
 
       // Archetypes: the coffee walker owns the morning at 60% pace; the
       // phone-checker keeps stopping to read something important; everyone
-      // else strides with purpose at their own pace.
+      // else strides with purpose at their own pace. Phone-checker only
+      // appears once there are 3+ walkers (desktop) — with just 2 (mobile)
+      // there's no room for a third distinct archetype.
       const isCoffee = i === 1;
-      const isPhone = i === 4;
+      const isPhone = i === 2;
       const pace = isCoffee ? 0.58 : 0.92 + Math.random() * 0.28;
       const side = i % 2 === 0 ? 1 : -1;
       const npc = spawnNpcCommon(fig, i, {
@@ -1777,7 +1759,9 @@ function initHeroSilhouette() {
     window.__EV_DEBUG.strideRaw = strideRaw;
 
     // ---- Phone-checker glow: tiny blue-white screen visible at night ----
-    const phoneNpc = npcs[4]; // walker index 4 is the phone-checker
+    // Only exists when the phone-checker archetype (walker index 2) was
+    // actually spawned — i.e. WALKER_COUNT >= 3 (desktop only).
+    const phoneNpc = WALKER_COUNT > 2 ? npcs[2] : null;
     if (phoneNpc && phoneNpc.group) {
       const pgMat = new THREE.MeshBasicMaterial({ color: 0xd4e8ff, transparent: true, opacity: 0 });
       pgMat.toneMapped = false;
@@ -1837,40 +1821,6 @@ function initHeroSilhouette() {
     // clearance from each) so the dancer's arm swing never clips a pole.
     dNpc.group.position.set(isSmallScreen ? 2.7 : 3.1, SIDEWALK_H, 0);
     dNpc.group.rotation.y = Math.PI * 0.9; // face the camera, slightly angled
-
-    // ---- Bench sitter: laughing at something on her phone ----
-    const sitClip = stripRootMotion(womanG.animations[0]);
-    const sitterOutfit = femalePool[0]; // crop top on the bench woman
-    const sitterFig = buildHuman(PEOPLE.woman, womanG, sitClip, sitterOutfit.teeImage, womanShirtImg);
-    const sitter = spawnNpcCommon(sitterFig, WALKER_COUNT + 1, {
-      rigPrefix: PEOPLE.woman.prefix,
-      static: true,
-      alwaysAnimate: true,
-    });
-    sitter.productId = sitterOutfit.id;
-    // Mobile bench sits nearer the curb and crosswalk so the sitter stays
-    // inside the reframed portrait view.
-    const benchX = isSmallScreen ? -2.6 : -3.8;
-    const benchZ = isSmallScreen ? 2.0 : 1.6;
-    sitter.group.position.set(benchX, SIDEWALK_H + 0.02, benchZ);
-    sitter.group.rotation.y = Math.PI * 0.55; // angled toward the street
-
-    // Minimal dark bench under her — matches the district furniture.
-    const benchMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.9 });
-    const bench = new THREE.Group();
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.5), benchMat);
-    seat.position.y = 0.42;
-    seat.castShadow = !isSmallScreen;
-    bench.add(seat);
-    [-0.6, 0.6].forEach((bx) => {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.42, 0.42), benchMat);
-      leg.position.set(bx, 0.21, 0);
-      bench.add(leg);
-    });
-    bench.position.set(benchX, SIDEWALK_H, benchZ);
-    bench.rotation.y = sitter.group.rotation.y;
-    scene.add(bench);
-    window.__EV_DEBUG.sitter = sitter;
   }).catch((err) => {
     console.warn("EL VYNCE hero: human models failed to load, using stylized fallback:", err);
     spawnStylizedFallbackCrowd();
@@ -2311,7 +2261,7 @@ function initHeroSilhouette() {
           npc.head.rotation.y = Math.sin(phase * 0.5) * 0.06;
         } else if (npc.mixer) {
           // Humans always tick: ground speed is expressed through the walk
-          // action's timeScale (stepHuman); events/dancer/sitter run at 1.
+          // action's timeScale (stepHuman); events/dancer run at 1.
           npc.mixer.update(dt);
         }
       });
