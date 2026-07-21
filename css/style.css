@@ -160,63 +160,123 @@ canvas#hero-shader, canvas#pdp-three {
   cursor: none !important;
 }
 
-/* Dot + ring cursor — small filled dot tracks instantly,
-   outer ring follows with a CSS-transition lag for a luxury trailing feel. */
+/* "Glowing orb" cursor.
+   The dot snaps to the pointer instantly (transform set every frame from JS).
+   The glow is a blurred radial halo, physics-lerped in a rAF loop and able to
+   velocity-stretch — its position transform is owned by JS, so CSS only
+   animates size/opacity/blur here (never `transform`, or it would fight JS).
+   mix-blend-mode:difference makes the whole cursor self-invert over dark hero
+   scenes, white type, and product photography — always visible. */
+.ev-cursor-dot,
+.ev-cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  mix-blend-mode: difference;
+  opacity: 0;
+  transition: opacity 0.4s ease, width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.4s ease, background 0.35s ease;
+  will-change: transform, width, height;
+}
+
 .ev-cursor-dot {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 5px;
-  height: 5px;
-  background: var(--black);
-  border-radius: 50%;
-  pointer-events: none;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;      /* center on the untranslated origin */
+  background: #fff;           /* difference-blended → reads black on white */
   z-index: 10000;
-  will-change: transform;
-  transition: transform 0.04s linear, width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
-  transform: translate(-50%, -50%);
 }
+.ev-cursor-dot.is-shown { opacity: 1; }
+.ev-cursor-dot.is-hovering { width: 4px; height: 4px; opacity: 0.6; }
+.ev-cursor-dot.is-hero-hover { width: 8px; height: 8px; }
+.ev-cursor-dot.is-clicking { width: 3px; height: 3px; }
+.ev-cursor-dot.is-view,
+.ev-cursor-dot.is-text { opacity: 0; }
 
-.ev-cursor-dot.is-hovering {
-  width: 3px;
-  height: 3px;
-  opacity: 0.4;
-}
-
-.ev-cursor-dot.is-clicking {
-  width: 8px;
-  height: 8px;
-}
-
-.ev-cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--black);
-  border-radius: 50%;
-  pointer-events: none;
+/* The soft ambient halo. Radial gradient + blur = a diffuse orb of light. */
+.ev-cursor-glow {
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%,
+                              rgba(255, 255, 255, 0.35) 45%,
+                              rgba(255, 255, 255, 0) 72%);
+  filter: blur(2px);
   z-index: 9999;
-  will-change: transform;
-  opacity: 0.5;
-  transform: translate(-50%, -50%);
-  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-              width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ev-cursor-glow.is-shown { opacity: 0.85; }
+
+/* Link / button hover: the orb swells and brightens. */
+.ev-cursor-glow.is-hovering {
+  width: 60px;
+  height: 60px;
+  filter: blur(3px);
+  opacity: 1;
 }
 
-.ev-cursor-ring.is-hovering {
-  width: 56px;
-  height: 56px;
-  opacity: 0.25;
+/* Clickable hero figure / car: a tighter, crisper orb invites the tap. */
+.ev-cursor-glow.is-hero-hover {
+  width: 40px;
+  height: 40px;
+  filter: blur(0.5px);
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%,
+                              rgba(255, 255, 255, 0.5) 55%,
+                              rgba(255, 255, 255, 0) 75%);
+  opacity: 1;
 }
 
-.ev-cursor-ring.is-clicking {
-  width: 28px;
-  height: 28px;
-  opacity: 0.8;
+/* Text fields: collapse into a slim, crisp vertical I-beam bar. */
+.ev-cursor-glow.is-text {
+  width: 3px;
+  height: 26px;
+  border-radius: 1px;
+  filter: blur(0);
+  background: #fff;
+  opacity: 1;
+}
+
+/* Product imagery: crisp ringed orb with the ↗ "open" glyph. */
+.ev-cursor-glow.is-view {
+  width: 66px;
+  height: 66px;
+  filter: blur(0);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%,
+                              rgba(255, 255, 255, 0.9) 60%,
+                              rgba(255, 255, 255, 0.9) 100%);
+  opacity: 1;
+}
+
+.ev-cursor-label {
+  font-family: "Inter", sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  color: #000;                /* NOT blended: parent already inverted, so black
+                                 glyph reads correctly on the white orb */
+  mix-blend-mode: normal;
+  opacity: 0;
+  transform: scale(0.5) rotate(-12deg);
+  transition: opacity 0.25s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.ev-cursor-glow.is-view .ev-cursor-label {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.ev-cursor-glow.is-clicking {
+  filter: blur(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-cursor-dot,
+  .ev-cursor-glow { transition: opacity 0.2s ease; }
 }
 
 .hero-wordmark-light .letter {
@@ -291,7 +351,7 @@ header.is-night a.bg-primary.text-on-primary {
 }
 
 @media (pointer: coarse) {
-  .ev-cursor-dot, .ev-cursor-ring { display: none; }
+  .ev-cursor-dot, .ev-cursor-glow { display: none; }
 }
 
 /* ── Spinning Brand Stamp — fixed, glides site-wide ── */

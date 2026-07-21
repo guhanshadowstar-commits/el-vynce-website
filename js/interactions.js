@@ -7,42 +7,121 @@ function initCustomCursor() {
   const noHover = window.matchMedia && window.matchMedia("(hover: none)").matches;
   const isTouch = "ontouchstart" in window;
   if (isCoarse || noHover || isTouch) return;
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Dot + trailing ring cursor — dot snaps instantly, ring follows with CSS lag.
+  // "Glowing orb" cursor — an ambient, softly-blurred halo that drifts behind
+  // a crisp tracking point. Calm and couture, matching the brand's "stillness".
+  //   dot  — snaps to the pointer instantly (the precise point).
+  //   glow — a blurred radial halo, physics-lerped in a rAF loop
+  //          (framerate-independent) with a gentle velocity stretch so quick
+  //          flicks smear like light. Both use mix-blend-mode:difference so the
+  //          cursor self-inverts over the night-mode hero, dark imagery, and
+  //          white type — always visible, never lost.
   const dot = document.createElement("div");
   dot.className = "ev-cursor-dot";
-  const ring = document.createElement("div");
-  ring.className = "ev-cursor-ring";
+  const glow = document.createElement("div");
+  glow.className = "ev-cursor-glow";
+  const label = document.createElement("span");
+  label.className = "ev-cursor-label";
+  label.textContent = "↗"; // ↗ "open" glyph shown over product imagery
+  glow.appendChild(label);
   document.body.appendChild(dot);
-  document.body.appendChild(ring);
+  document.body.appendChild(glow);
   document.documentElement.classList.add("ev-cursor-active");
 
+  let mx = -100, my = -100;   // real pointer
+  let gx = -100, gy = -100;   // lagged glow
+  let shown = false;
+  let steady = false;         // over text/image: hold shape, skip the stretch
+  let pulseAt = -1;           // click-pulse timestamp
+  let lastFrame = performance.now();
+
+  function frame(now) {
+    // Time-corrected lerp: identical feel at 60 Hz and 144 Hz.
+    const dt = Math.min(0.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    const k = 1 - Math.exp(-11 * dt);
+    gx += (mx - gx) * k;
+    gy += (my - gy) * k;
+
+    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
+
+    // Click pulse: a quick outward bounce that decays over ~0.45s. Done in JS
+    // (not a CSS keyframe) because the glow's transform is owned by this loop.
+    let pulse = 1;
+    if (pulseAt >= 0) {
+      const p = (now - pulseAt) / 450;
+      if (p >= 1) pulseAt = -1;
+      else pulse = 1 + Math.sin(p * Math.PI) * 0.4 * (1 - p);
+    }
+
+    const vx = mx - gx, vy = my - gy;
+    const speed = Math.hypot(vx, vy);
+    if (!reduceMotion && !steady && speed > 1.5) {
+      const angle = Math.atan2(vy, vx);
+      const stretch = Math.min(speed * 0.007, 0.32);
+      glow.style.transform =
+        `translate(${gx}px, ${gy}px) translate(-50%, -50%) ` +
+        `rotate(${angle}rad) scale(${(1 + stretch) * pulse}, ${(1 - stretch * 0.5) * pulse})`;
+    } else {
+      glow.style.transform = `translate(${gx}px, ${gy}px) translate(-50%, -50%) scale(${pulse})`;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
   window.addEventListener("mousemove", (e) => {
-    const x = e.clientX, y = e.clientY;
-    dot.style.transform  = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
-    ring.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%))`;
+    mx = e.clientX; my = e.clientY;
+    if (!shown) {
+      // First movement: materialize at the pointer, not at 0,0.
+      gx = mx; gy = my;
+      shown = true;
+      dot.classList.add("is-shown");
+      glow.classList.add("is-shown");
+    }
+    // The hero canvas signals clickable figures/cars via style.cursor.
+    const overHero = e.target && e.target.tagName === "CANVAS" && e.target.style.cursor === "pointer";
+    dot.classList.toggle("is-hero-hover", overHero);
+    glow.classList.toggle("is-hero-hover", overHero);
   });
 
-  const hoverSelector = "a, button, [data-cursor-grow], input, textarea, select, .product-image, label";
-  document.addEventListener("mouseover", (e) => {
-    if (e.target.closest && e.target.closest(hoverSelector)) {
-      dot.classList.add("is-hovering");
-      ring.classList.add("is-hovering");
-    }
+  // Fade out when the mouse leaves the window entirely.
+  document.addEventListener("mouseleave", () => {
+    dot.classList.remove("is-shown");
+    glow.classList.remove("is-shown");
+    shown = false;
   });
-  document.addEventListener("mouseout", (e) => {
-    if (e.target.closest && e.target.closest(hoverSelector)) {
-      dot.classList.remove("is-hovering");
-      ring.classList.remove("is-hovering");
-    }
-  });
+
+  // Hover states, most specific first:
+  //   view  — product imagery: glow tightens and shows the ↗ glyph
+  //   text  — inputs: collapse into a slim I-beam bar
+  //   hover — links/buttons: glow blooms brighter, dot recedes
+  const viewSelector = ".product-image, [data-cursor-view]";
+  const textSelector = "input:not([type=button]):not([type=submit]), textarea, [contenteditable]";
+  const hoverSelector = "a, button, [data-cursor-grow], select, label, [data-magnetic]";
+  function setState(el) {
+    const view = !!(el && el.closest && el.closest(viewSelector));
+    const text = !view && !!(el && el.closest && el.closest(textSelector));
+    const hover = !view && !text && !!(el && el.closest && el.closest(hoverSelector));
+    steady = view || text;
+    [dot, glow].forEach((n) => {
+      n.classList.toggle("is-view", view);
+      n.classList.toggle("is-text", text);
+      n.classList.toggle("is-hovering", hover);
+    });
+  }
+  document.addEventListener("mouseover", (e) => setState(e.target));
+  document.addEventListener("mouseout", () => setState(null));
+
+  // Click: dot contracts, glow gives a soft outward pulse (handled in frame()).
   document.addEventListener("mousedown", () => {
     dot.classList.add("is-clicking");
-    ring.classList.add("is-clicking");
+    glow.classList.add("is-clicking");
+    if (!reduceMotion) pulseAt = performance.now();
   });
   document.addEventListener("mouseup", () => {
     dot.classList.remove("is-clicking");
-    ring.classList.remove("is-clicking");
+    glow.classList.remove("is-clicking");
   });
 }
 

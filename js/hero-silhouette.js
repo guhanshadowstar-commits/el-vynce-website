@@ -585,11 +585,14 @@ function initHeroSilhouette() {
   // and distant figures rendered tiny ("humans are not visible"). Street-
   // level camera, closer and lower, wider lens: figures read ~40% larger and
   // the crosswalk sits center-frame as the focal event.
+  // Zoomed out a bit further (pos z 11.5→13.5, y 2.6→3.1, FOV 66°→72°) per
+  // feedback that mobile felt too tight/cropped — trades a little of that
+  // figure-size gain back for more visible street on screen.
   const BASE_CAM_POS = isSmallScreen
-    ? new THREE.Vector3(0, 2.6, 11.5)
+    ? new THREE.Vector3(0, 3.1, 13.5)
     : new THREE.Vector3(0, 2.7, 9.2);
   const BASE_CAM_TARGET = isSmallScreen
-    ? new THREE.Vector3(0, 1.6, -3)
+    ? new THREE.Vector3(0, 1.7, -3.5)
     : new THREE.Vector3(0, 1.15, -0.5);
   // Scroll-pulled-back pose — camera rises and retreats as the visitor scrolls past the hero.
   const SCROLL_CAM_POS = isSmallScreen
@@ -601,7 +604,7 @@ function initHeroSilhouette() {
   const DRIFT_AMPLITUDE_Y = 0.18;
   const DRIFT_SPEED = 0.06;
 
-  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 66 : 45, width / height, 0.1, 120);
+  const camera = new THREE.PerspectiveCamera(isSmallScreen ? 72 : 45, width / height, 0.1, 120);
   camera.position.copy(BASE_CAM_POS);
   camera.lookAt(BASE_CAM_TARGET);
 
@@ -1007,51 +1010,209 @@ function initHeroSilhouette() {
   const wheelGeo = new THREE.CylinderGeometry(0.17, 0.17, 0.14, 12);
   wheelGeo.rotateZ(Math.PI / 2); // axle along X so mesh.rotation.x rolls the wheel
 
-  function createCar(bodyColor) {
-    const group = new THREE.Group();
+  // Car body types — each is a recipe of boxes on top of the shared wheel/light
+  // rig. half = half the vehicle's length (used for stop lines + crash contact).
+  // A car re-rolls its type AND color every time it loops off-frame, so
+  // different kinds of vehicles keep arriving over time.
+  const CAR_TYPES = {
+    sedan: {
+      half: 0.95,
+      boxes: [
+        { w: 0.9, h: 0.34, d: 1.9, y: 0.36, z: 0, paint: true, edges: true },
+        { w: 0.82, h: 0.3, d: 0.95, y: 0.62, z: -0.05, glass: true },
+      ],
+    },
+    hatchback: {
+      half: 0.8,
+      boxes: [
+        { w: 0.85, h: 0.32, d: 1.55, y: 0.35, z: 0, paint: true, edges: true },
+        { w: 0.78, h: 0.3, d: 0.85, y: 0.6, z: -0.22, glass: true },
+      ],
+    },
+    suv: {
+      half: 0.98,
+      boxes: [
+        { w: 0.95, h: 0.42, d: 1.9, y: 0.42, z: 0, paint: true, edges: true },
+        { w: 0.88, h: 0.34, d: 1.15, y: 0.78, z: -0.12, glass: true },
+      ],
+    },
+    pickup: {
+      half: 1.0,
+      boxes: [
+        { w: 0.9, h: 0.34, d: 1.95, y: 0.34, z: 0, paint: true, edges: true },  // chassis
+        { w: 0.84, h: 0.36, d: 0.75, y: 0.66, z: 0.28, glass: true },           // cab
+        { w: 0.86, h: 0.16, d: 0.85, y: 0.56, z: -0.5, paint: true },           // bed walls
+      ],
+    },
+    van: {
+      half: 1.05,
+      boxes: [
+        { w: 0.92, h: 0.62, d: 2.05, y: 0.5, z: 0, paint: true, edges: true },
+        { w: 0.86, h: 0.26, d: 0.55, y: 0.72, z: 0.68, glass: true },           // windshield band
+      ],
+    },
+  };
+  const CAR_TYPE_NAMES = Object.keys(CAR_TYPES);
+
+  // Builds the visible meshes for one car type into a disposable subgroup.
+  // Light materials are passed in and reused so day/night + brake/hazard
+  // passes keep working across rebuilds.
+  function buildCarVisual(typeName, bodyColor, hlMat, tlMat) {
+    const spec = CAR_TYPES[typeName];
+    const visual = new THREE.Group();
     const paint = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.5, metalness: 0.35 });
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 1.9), paint);
-    body.position.y = 0.36;
-    body.castShadow = !isSmallScreen;
-    group.add(body);
-    body.add(new THREE.LineSegments(
-      new THREE.EdgesGeometry(body.geometry),
-      new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 })
-    ));
-
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.3, 0.95), carGlassMat);
-    cabin.position.set(0, 0.62, -0.05);
-    cabin.castShadow = !isSmallScreen;
-    group.add(cabin);
+    spec.boxes.forEach((b) => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(b.w, b.h, b.d),
+        b.glass ? carGlassMat : paint
+      );
+      mesh.position.set(0, b.y, b.z);
+      mesh.castShadow = !isSmallScreen;
+      visual.add(mesh);
+      if (b.edges) {
+        mesh.add(new THREE.LineSegments(
+          new THREE.EdgesGeometry(mesh.geometry),
+          new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 })
+        ));
+      }
+    });
 
     const wheels = [];
-    [[-0.46, 0.6], [0.46, 0.6], [-0.46, -0.6], [0.46, -0.6]].forEach(([wx, wz]) => {
+    const wz = spec.half - 0.33;
+    [[-0.46, wz], [0.46, wz], [-0.46, -wz], [0.46, -wz]].forEach(([wx, z]) => {
       const w = new THREE.Mesh(wheelGeo, wheelMat);
-      w.position.set(wx, 0.17, wz);
+      w.position.set(wx, 0.17, z);
       w.castShadow = !isSmallScreen;
-      group.add(w);
+      visual.add(w);
       wheels.push(w);
     });
 
     // Headlights face +Z (front, travel direction); taillights face -Z (rear).
+    [-0.28, 0.28].forEach((hx) => {
+      const hl = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12), hlMat);
+      hl.position.set(hx, 0.34, spec.half + 0.01);
+      visual.add(hl);
+      const tl = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), tlMat);
+      tl.position.set(hx, 0.36, -(spec.half + 0.01));
+      tl.rotation.y = Math.PI;
+      visual.add(tl);
+    });
+
+    return { visual, wheels, half: spec.half, paint };
+  }
+
+  function disposeCarVisual(visual) {
+    visual.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      // Shared mats (glass/wheel/lights) are reused; only the paint and edge
+      // line materials are per-visual.
+      if (o.isLineSegments && o.material) o.material.dispose();
+      if (o.isMesh && o.material && o.material.isMeshStandardMaterial &&
+          o.material !== carGlassMat && o.material !== wheelMat) o.material.dispose();
+    });
+  }
+
+  function createCar(typeName, bodyColor) {
+    const group = new THREE.Group();
     const hlMat = new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0 });
     hlMat.toneMapped = false;
     const tlMat = new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.2 });
     tlMat.toneMapped = false;
-    [-0.28, 0.28].forEach((hx) => {
-      const hl = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12), hlMat);
-      hl.position.set(hx, 0.34, 0.96);
-      group.add(hl);
-      const tl = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), tlMat);
-      tl.position.set(hx, 0.36, -0.96);
-      tl.rotation.y = Math.PI;
-      group.add(tl);
-    });
     carHeadlightMats.push(hlMat);
     carTaillightMats.push(tlMat);
 
-    return { group, wheels, tlMat };
+    const built = buildCarVisual(typeName, bodyColor, hlMat, tlMat);
+    group.add(built.visual);
+
+    const car = {
+      group, hlMat, tlMat,
+      visual: built.visual, wheels: built.wheels, half: built.half,
+      type: typeName,
+      state: "normal", // normal | tapStop | distracted | crashed
+      honkUntil: 0, hazardUntil: 0,
+    };
+    // Re-roll type + color for the next pass down the street.
+    car.rebuild = () => {
+      group.remove(car.visual);
+      disposeCarVisual(car.visual);
+      const nextType = CAR_TYPE_NAMES[Math.floor(Math.random() * CAR_TYPE_NAMES.length)];
+      const nextColor = CAR_BODY_COLORS[Math.floor(Math.random() * CAR_BODY_COLORS.length)];
+      const rebuilt = buildCarVisual(nextType, nextColor, hlMat, tlMat);
+      group.add(rebuilt.visual);
+      car.visual = rebuilt.visual;
+      car.wheels = rebuilt.wheels;
+      car.half = rebuilt.half;
+      car.type = nextType;
+      if (car.honkSprite) car.group.add(car.honkSprite); // sprite lives on group, keep it
+    };
+    return car;
+  }
+
+  // ---- Horn: WebAudio double-tone honk + comic "HONK!" bubble ----
+  // AudioContext is created lazily inside the user's own tap gesture, which is
+  // exactly when browsers allow sound to start.
+  let audioCtx = null;
+  function playHonk(pitch = 1, delay = 0) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const t0 = audioCtx.currentTime + delay;
+      [370, 466].forEach((f) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.value = f * pitch;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.linearRampToValueAtTime(0.07, t0 + 0.02);
+        gain.gain.setValueAtTime(0.07, t0 + 0.16);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.32);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.36);
+      });
+    } catch (e) { /* no audio available — bubble still shows */ }
+  }
+
+  const honkTexture = (() => {
+    const c = document.createElement("canvas");
+    c.width = 256; c.height = 128;
+    const g = c.getContext("2d");
+    // Yellow comic bubble with a little tail.
+    g.fillStyle = "#ffd60a";
+    g.strokeStyle = "#111111";
+    g.lineWidth = 6;
+    g.beginPath();
+    const r = 26, x0 = 10, y0 = 8, w = 236, h = 78;
+    g.moveTo(x0 + r, y0);
+    g.lineTo(x0 + w - r, y0); g.arcTo(x0 + w, y0, x0 + w, y0 + r, r);
+    g.lineTo(x0 + w, y0 + h - r); g.arcTo(x0 + w, y0 + h, x0 + w - r, y0 + h, r);
+    g.lineTo(x0 + r, y0 + h); g.arcTo(x0, y0 + h, x0, y0 + h - r, r);
+    g.lineTo(x0, y0 + r); g.arcTo(x0, y0, x0 + r, y0, r);
+    g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(60, 84); g.lineTo(42, 118); g.lineTo(92, 84);
+    g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#111111";
+    g.font = "900 44px Arial, sans-serif";
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("HONK!", 128, 49);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+
+  function showHonkBubble(car, t, duration = 1.3) {
+    if (!car.honkSprite) {
+      const mat = new THREE.SpriteMaterial({ map: honkTexture, transparent: true, opacity: 0, depthWrite: false });
+      mat.toneMapped = false;
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(0.95, 0.48, 1);
+      sprite.position.set(0.25, 1.25, 0);
+      car.group.add(sprite);
+      car.honkSprite = sprite;
+    }
+    car.honkStart = t;
+    car.honkUntil = t + duration;
   }
 
   CAR_LANES.forEach(({ x, dir }) => {
@@ -1062,7 +1223,10 @@ function initHeroSilhouette() {
     const span = CAR_Z_FRONT - CAR_Z_BACK;
     const laneOffset = Math.random() * span;
     for (let i = 0; i < CAR_PER_LANE; i++) {
-      const car = createCar(CAR_BODY_COLORS[cars.length % CAR_BODY_COLORS.length]);
+      const car = createCar(
+        CAR_TYPE_NAMES[Math.floor(Math.random() * CAR_TYPE_NAMES.length)],
+        CAR_BODY_COLORS[cars.length % CAR_BODY_COLORS.length]
+      );
       car.group.rotation.y = dir > 0 ? 0 : Math.PI;
       car.z = CAR_Z_BACK + (((i + Math.random() * 0.8) / CAR_PER_LANE) * span + laneOffset) % span;
       car.lane = x;
@@ -1082,6 +1246,15 @@ function initHeroSilhouette() {
     // Yellow phase: cars also brake 2 s before their light turns red.
     const yellowBrake = !sig.green && sig.timeLeft < 2;
     cars.forEach((car) => {
+      // Crashed pair: both sit stunned with hazards on, then recover.
+      if (car.state === "crashed") {
+        car.speed = 0;
+        car.braking = true;
+        if (t > car.recoverAt) car.state = "normal";
+        car.group.position.z = car.z;
+        return;
+      }
+
       // Stagger: when signal switches pedestrian→car, each car waits a random
       // 0–1.6 s before accelerating — prevents the full convoy going at once.
       if (car._wasGreen === true && !green) car._goAt = t + Math.random() * 1.6;
@@ -1092,46 +1265,115 @@ function initHeroSilhouette() {
       let target = car.cruise;
 
       // Yield to the crosswalk on red, yellow, or during per-car stagger delay.
+      // This applies to EVERY state (even the distracted joke car) — nobody
+      // ever runs the pedestrian light.
       if (effectiveStop) {
         if (car.dir > 0 && car.z < CW_LO) {
-          const dist = (CW_LO - CAR_HALF - 0.1) - car.z;
+          const dist = (CW_LO - car.half - 0.1) - car.z;
           if (dist < 5) target = Math.min(target, car.cruise * Math.max(0, dist / 5));
           if (dist < 0.3) target = 0;
         } else if (car.dir < 0 && car.z > CW_HI) {
-          const dist = car.z - (CW_HI + CAR_HALF + 0.1);
+          const dist = car.z - (CW_HI + car.half + 0.1);
           if (dist < 5) target = Math.min(target, car.cruise * Math.max(0, dist / 5));
           if (dist < 0.3) target = 0;
         }
       }
 
-      // Car-following: never rear-end the car ahead in the same lane.
-      let leadGap = Infinity;
-      cars.forEach((o) => {
-        if (o === car || o.dir !== car.dir || Math.abs(o.lane - car.lane) > 0.1) return;
-        const ahead = (o.z - car.z) * car.dir;
-        if (ahead > 0) leadGap = Math.min(leadGap, ahead);
-      });
-      if (leadGap < 2.6) target = Math.min(target, car.cruise * Math.max(0, (leadGap - 2.2) / 0.4));
-      if (leadGap < 2.2) target = 0;
+      // Tapped car: emergency stop where it is, then move on if nobody hit it.
+      if (car.state === "tapStop") {
+        target = 0;
+        if (t > car.stopUntil) car.state = "normal";
+      }
 
-      car.speed += (target - car.speed) * Math.min(1, 3 * dt);
+      if (car.state === "distracted") {
+        // The joke: this driver "doesn't notice" the stopped car ahead —
+        // car-following is skipped so it plows straight into the bumper.
+        const lead = car.jokeLead;
+        if (!lead || lead.state === "normal") {
+          car.state = "normal"; // lead drove off before impact — joke over
+          car.jokeLead = null;
+        } else {
+          const gap = (lead.z - car.z) * car.dir;
+          const contact = lead.half + car.half + 0.02;
+          if (gap <= contact) {
+            // CRASH — bumper kiss: lead gets shunted forward, both freeze
+            // with hazards + horns, recover 5 s later and drive on.
+            car.state = "crashed";
+            lead.state = "crashed";
+            car.recoverAt = lead.recoverAt = t + 5;
+            car.hazardUntil = lead.hazardUntil = t + 5;
+            car.z = lead.z - car.dir * contact;
+            lead.z += car.dir * 0.24;
+            lead.group.position.z = lead.z;
+            car.speed = 0; lead.speed = 0;
+            playHonk(0.85, 0); playHonk(1.2, 0.4); playHonk(0.85, 0.85);
+            showHonkBubble(car, t, 1.6);
+            showHonkBubble(lead, t + 0.35, 1.6);
+            car.group.position.z = car.z;
+            return;
+          }
+        }
+      }
+
+      // Car-following: never rear-end the car ahead in the same lane.
+      // (Skipped while "distracted" — that IS the joke.)
+      if (car.state !== "distracted") {
+        let leadGap = Infinity;
+        let leadHalf = 0.95;
+        cars.forEach((o) => {
+          if (o === car || o.dir !== car.dir || Math.abs(o.lane - car.lane) > 0.1) return;
+          const ahead = (o.z - car.z) * car.dir;
+          if (ahead > 0 && ahead < leadGap) { leadGap = ahead; leadHalf = o.half; }
+        });
+        const stopGap = car.half + leadHalf + 0.3;
+        if (leadGap < stopGap + 0.4) target = Math.min(target, car.cruise * Math.max(0, (leadGap - stopGap) / 0.4));
+        if (leadGap < stopGap) target = 0;
+      }
+
+      car.speed += (target - car.speed) * Math.min(1, (car.state === "tapStop" ? 8 : 3) * dt);
       car.braking = car.speed < car.cruise * 0.5; // flag read by brake-light pass
       car.z += car.dir * car.speed * dt;
 
       // Hard clamp at the stop line so a car never rolls onto the zebra.
       if (effectiveStop) {
-        if (car.dir > 0 && car.z < CW_LO) car.z = Math.min(car.z, CW_LO - CAR_HALF - 0.1);
-        else if (car.dir < 0 && car.z > CW_HI) car.z = Math.max(car.z, CW_HI + CAR_HALF + 0.1);
+        if (car.dir > 0 && car.z < CW_LO) car.z = Math.min(car.z, CW_LO - car.half - 0.1);
+        else if (car.dir < 0 && car.z > CW_HI) car.z = Math.max(car.z, CW_HI + car.half + 0.1);
       }
 
-      // Loop back to the far end once it drives off frame.
-      if (car.dir > 0 && car.z > CAR_Z_FRONT) car.z = CAR_Z_BACK - Math.random() * 3;
-      else if (car.dir < 0 && car.z < CAR_Z_BACK) car.z = CAR_Z_FRONT + Math.random() * 3;
+      // Loop back to the far end once it drives off frame — re-rolling the
+      // body type and color so a different kind of vehicle arrives next.
+      if (car.dir > 0 && car.z > CAR_Z_FRONT) { car.z = CAR_Z_BACK - Math.random() * 3; car.rebuild(); }
+      else if (car.dir < 0 && car.z < CAR_Z_BACK) { car.z = CAR_Z_FRONT + Math.random() * 3; car.rebuild(); }
 
       car.group.position.z = car.z;
       const roll = (car.speed * dt) / 0.17;
       car.wheels.forEach((w) => { w.rotation.x += roll; });
     });
+  }
+
+  // Tap/click on a car: it honks and stops; if another car is following in
+  // the same lane, that driver "doesn't notice" and rear-ends it (comedy
+  // fender-bender: horns, hazards, 5 s of embarrassment, then both drive on).
+  function tapCar(car, t) {
+    if (car.state !== "normal") return;
+    playHonk(1, 0);
+    showHonkBubble(car, t);
+    car.state = "tapStop";
+    car.stopUntil = t + 3.2;
+    // Nearest normal-state follower behind in the same lane becomes the joke.
+    let follower = null;
+    let best = Infinity;
+    cars.forEach((o) => {
+      if (o === car || o.dir !== car.dir || Math.abs(o.lane - car.lane) > 0.1) return;
+      if (o.state !== "normal") return;
+      const behind = (car.z - o.z) * car.dir;
+      if (behind > 0 && behind < best && behind < 14) { best = behind; follower = o; }
+    });
+    if (follower) {
+      follower.state = "distracted";
+      follower.jokeLead = car;
+      car.stopUntil = t + 8; // wait long enough to get hit
+    }
   }
 
   // ---- The towers: two near rows flanking the street + a far skyline row ----
@@ -1191,7 +1433,9 @@ function initHeroSilhouette() {
   const npcs = [];
   const clock = new THREE.Clock();
   let usingGLTFHumans = false;
-  window.__EV_DEBUG = {};
+  // cars/tapCar exposed for console debugging of the honk/crash interaction
+  // (tapCar is a hoisted function declaration, so it's live here).
+  window.__EV_DEBUG = { cars, tapCar };
 
   // ---- Real human characters (Mixamo, provided by the founder) ----
   // Each rig uses the same Mixamo skeleton but with a numbered name prefix,
@@ -1555,8 +1799,10 @@ function initHeroSilhouette() {
       // Crosswalk decision: commuters near the crosswalk may head across —
       // immediately on a fresh green, or gather at the curb through a red.
       if (npc.canCross && t > npc.crossCooldownUntil && Math.abs(npc.zPos - CROSS_Z) < 0.5) {
-        npc.crossCooldownUntil = t + 20 + Math.random() * 30;
-        if (Math.random() < 0.55) {
+        // Shorter cooldown + higher odds than before: with only 2-3 walkers,
+        // crossings need to fire often to stay a visible part of the scene.
+        npc.crossCooldownUntil = t + 12 + Math.random() * 18;
+        if (Math.random() < 0.75) {
           if (sig.green && sig.timeLeft > 4.5) {
             beginCross(npc);
           } else {
@@ -1746,7 +1992,7 @@ function initHeroSilhouette() {
         lane: randomLane(side),
         dir: (i >> 1) % 2 === 0 ? 1 : -1,
         zPos: WALK_Z_MIN + Math.random() * (WALK_Z_MAX - WALK_Z_MIN),
-        canCross: !isCoffee && !isPhone, // all non-archetype walkers use the crosswalk
+        canCross: !isPhone, // everyone crosses except the distracted phone-checker
         crossCooldownUntil: Math.random() * 10, // start crossing sooner after load
         pauseChance: isPhone ? 1 / 12 : 1 / 45,
         pauseDur: isPhone ? [4, 9] : [1.2, 3.2],
@@ -1836,6 +2082,20 @@ function initHeroSilhouette() {
     pointerX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     pointerY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
   });
+  // Touch = the mobile equivalent of cursor parallax: touching/dragging the
+  // hero leans the camera toward the finger (same easing, same clamped
+  // range), and it glides back to center on release. Listeners are passive
+  // so page scrolling over the hero keeps working normally.
+  function touchSteer(e) {
+    if (!e.touches || !e.touches.length) return;
+    const rect = mount.getBoundingClientRect();
+    const touch = e.touches[0];
+    pointerX = Math.max(-1, Math.min(1, ((touch.clientX - rect.left) / rect.width) * 2 - 1));
+    pointerY = Math.max(-1, Math.min(1, ((touch.clientY - rect.top) / rect.height) * 2 - 1));
+  }
+  renderer.domElement.addEventListener("touchstart", touchSteer, { passive: true });
+  renderer.domElement.addEventListener("touchmove", touchSteer, { passive: true });
+  renderer.domElement.addEventListener("touchend", () => { pointerX = 0; pointerY = 0; }, { passive: true });
 
   // ---- Scroll-linked camera pull-back + brand stamp reveal ----
   let scrollProgress = 0;
@@ -1870,17 +2130,36 @@ function initHeroSilhouette() {
     return obj ? visibleNpcs.find((n) => n.group === obj) : null;
   }
 
+  function carUnderPointer(clientX, clientY) {
+    const rect = mount.getBoundingClientRect();
+    pointerVec.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointerVec.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointerVec, camera);
+    const hits = raycaster.intersectObjects(cars.map((c) => c.group), true);
+    if (!hits.length) return null;
+    let obj = hits[0].object;
+    while (obj && !cars.find((c) => c.group === obj)) obj = obj.parent;
+    return obj ? cars.find((c) => c.group === obj) : null;
+  }
+
   renderer.domElement.style.pointerEvents = "auto";
   renderer.domElement.addEventListener("click", (e) => {
+    // Figures first (they link to products); otherwise a tapped car honks,
+    // stops, and — if someone's tailgating — gets comedy rear-ended.
     const hit = npcUnderPointer(e.clientX, e.clientY);
-    if (hit) window.location.href = `product-detail.html?id=${hit.productId}`;
+    if (hit) {
+      window.location.href = `product-detail.html?id=${hit.productId}`;
+      return;
+    }
+    const carHit = carUnderPointer(e.clientX, e.clientY);
+    if (carHit) tapCar(carHit, sceneT);
   });
   let lastHoverCheck = 0;
   renderer.domElement.addEventListener("mousemove", (e) => {
     const now = performance.now();
     if (now - lastHoverCheck < 66) return;
     lastHoverCheck = now;
-    const hit = npcUnderPointer(e.clientX, e.clientY);
+    const hit = npcUnderPointer(e.clientX, e.clientY) || carUnderPointer(e.clientX, e.clientY);
     renderer.domElement.style.cursor = hit ? "pointer" : "default";
   });
 
@@ -2273,6 +2552,20 @@ function initHeroSilhouette() {
       // This runs AFTER updateDayNightCycle so it wins over the base value.
       cars.forEach((car) => {
         if (car.braking && car.tlMat) car.tlMat.opacity = Math.max(car.tlMat.opacity, 0.92);
+        // Hazard flash after the fender-bender: front AND rear lights blink.
+        if (car.hazardUntil > t) {
+          const on = Math.sin(t * 12) > 0;
+          car.tlMat.opacity = on ? 1 : 0.08;
+          car.hlMat.opacity = on ? 0.9 : Math.min(car.hlMat.opacity, 0.08);
+        }
+        // Comic HONK! bubble: pop in fast, fade out at the end.
+        if (car.honkSprite) {
+          const remain = car.honkUntil - t;
+          const elapsed = t - (car.honkStart || 0);
+          car.honkSprite.material.opacity = remain <= 0
+            ? 0
+            : Math.max(0, Math.min(1, elapsed / 0.12)) * Math.min(1, remain / 0.35);
+        }
       });
 
       // Cursor parallax: ease toward the target offset rather than snapping.
