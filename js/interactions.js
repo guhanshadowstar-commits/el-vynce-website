@@ -9,67 +9,73 @@ function initCustomCursor() {
   if (isCoarse || noHover || isTouch) return;
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // "Viewfinder" cursor — four corner brackets framing the pointer like a
-  // camera focus reticle. Sharp and architectural (matches the "architectural
-  // silhouette" language already in the product copy) rather than soft/ambient.
-  //   4 corner brackets — a lagged square (rAF-lerped, framerate-independent)
-  //     that contracts on links, flares open with a "+" zoom mark over
-  //     product imagery, and gives a quick focus-lock snap on click.
-  //   center dot — snaps to the pointer instantly (the precise point).
-  // mix-blend-mode:difference makes it self-invert over the night-mode hero,
-  // dark imagery, and white type — always visible, never lost.
-  const root = document.createElement("div");
-  root.className = "ev-cursor-root";
+  // "Prowling Panther" cursor — the brand mark itself (images/cursor/panther-cursor.png,
+  // the actual EL VYNCE panther-head logo, extracted from the client's PDF/SVG
+  // export and re-rendered as a clean white silhouette) trails the pointer like
+  // it's stalking it.
+  //   dot     — snaps to the pointer instantly (the precise point).
+  //   panther — rAF-lerped position (framerate-independent) a step behind the
+  //             dot, with a subtle head-tilt toward the direction of travel
+  //             (a glance, not a full rotation — the art is a fixed side
+  //             profile) and a light bob tied to movement speed. Perks up
+  //             (grows, brightens) on links, grows further with a soft
+  //             drop-shadow "gaze" over product imagery, and gives a quick
+  //             pounce — a scale/lurch lunge toward the click point — on click.
+  // mix-blend-mode:difference (white silhouette) makes it self-invert over
+  // the night-mode hero, dark imagery, and white type — always visible.
   const dot = document.createElement("div");
   dot.className = "ev-cursor-dot";
-  const corners = ["tl", "tr", "bl", "br"].map((pos) => {
-    const c = document.createElement("div");
-    c.className = `ev-cursor-corner ev-cursor-corner-${pos}`;
-    root.appendChild(c);
-    return c;
-  });
-  const label = document.createElement("span");
-  label.className = "ev-cursor-label";
-  label.textContent = "+"; // zoom mark shown over product imagery
-  root.appendChild(label);
+  const panther = document.createElement("div");
+  panther.className = "ev-cursor-panther";
   document.body.appendChild(dot);
-  document.body.appendChild(root);
+  document.body.appendChild(panther);
   document.documentElement.classList.add("ev-cursor-active");
 
   let mx = -100, my = -100;   // real pointer
-  let cx = -100, cy = -100;   // lagged bracket-square center
-  let half = 16;              // current bracket-square half-size (lerped)
-  let targetHalf = 16;
+  let px = -100, py = -100;   // lagged panther position
+  let tilt = 0;               // current head-tilt angle (degrees, lerped)
+  let bob = 0;                // subtle vertical bob phase
   let shown = false;
-  let lockAt = -1;            // click focus-lock timestamp
+  let pounceAt = -1;          // click-pounce timestamp
   let lastFrame = performance.now();
 
   function frame(now) {
     // Time-corrected lerp: identical feel at 60 Hz and 144 Hz.
     const dt = Math.min(0.05, (now - lastFrame) / 1000);
     lastFrame = now;
-    const k = 1 - Math.exp(-14 * dt);
-    cx += (mx - cx) * k;
-    cy += (my - cy) * k;
-    half += (targetHalf - half) * k;
+    const k = 1 - Math.exp(-9 * dt);
+    px += (mx - px) * k;
+    py += (my - py) * k;
 
     dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
 
-    // Focus-lock: a quick inward snap-and-release on click, like a camera
-    // racking focus. Done in JS (not a CSS keyframe) since size is owned here.
-    let snap = 0;
-    if (lockAt >= 0) {
-      const p = (now - lockAt) / 320;
-      if (p >= 1) lockAt = -1;
-      else snap = Math.sin(p * Math.PI) * 5 * (1 - p * 0.4);
+    const vx = mx - px, vy = my - py;
+    const speed = Math.hypot(vx, vy);
+    if (!reduceMotion) {
+      // Head-tilt glances toward the direction of travel — clamped small so
+      // the fixed side-profile art never looks like it's spinning.
+      const targetTilt = Math.max(-14, Math.min(14, vx * 0.35));
+      tilt += (targetTilt - tilt) * Math.min(1, 6 * dt);
+      bob += dt * Math.min(10, speed * 0.15);
+    } else {
+      tilt = 0;
     }
-    const h = Math.max(4, half - (reduceMotion ? 0 : snap));
 
-    root.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
-    corners[0].style.transform = `translate(${-h}px, ${-h}px)`;   // tl
-    corners[1].style.transform = `translate(${h}px, ${-h}px)`;    // tr
-    corners[2].style.transform = `translate(${-h}px, ${h}px)`;    // bl
-    corners[3].style.transform = `translate(${h}px, ${h}px)`;     // br
+    // Pounce: a quick forward lurch + scale punch that decays over ~0.4s.
+    let pounceScale = 1, pounceLurch = 0;
+    if (pounceAt >= 0) {
+      const p = (now - pounceAt) / 400;
+      if (p >= 1) pounceAt = -1;
+      else {
+        pounceScale = 1 + Math.sin(p * Math.PI) * 0.22 * (1 - p * 0.3);
+        pounceLurch = Math.sin(p * Math.PI) * 3 * (1 - p);
+      }
+    }
+    const bobY = reduceMotion ? 0 : Math.sin(bob) * 1.4;
+
+    panther.style.transform =
+      `translate(${px}px, ${py + bobY}px) translate(-50%, -50%) ` +
+      `translate(0, ${-pounceLurch}px) rotate(${tilt}deg) scale(${pounceScale})`;
 
     requestAnimationFrame(frame);
   }
@@ -79,28 +85,28 @@ function initCustomCursor() {
     mx = e.clientX; my = e.clientY;
     if (!shown) {
       // First movement: materialize at the pointer, not at 0,0.
-      cx = mx; cy = my;
+      px = mx; py = my;
       shown = true;
       dot.classList.add("is-shown");
-      root.classList.add("is-shown");
+      panther.classList.add("is-shown");
     }
     // The hero canvas signals clickable figures/cars via style.cursor.
     const overHero = e.target && e.target.tagName === "CANVAS" && e.target.style.cursor === "pointer";
     dot.classList.toggle("is-hero-hover", overHero);
-    root.classList.toggle("is-hero-hover", overHero);
+    panther.classList.toggle("is-hero-hover", overHero);
   });
 
   // Fade out when the mouse leaves the window entirely.
   document.addEventListener("mouseleave", () => {
     dot.classList.remove("is-shown");
-    root.classList.remove("is-shown");
+    panther.classList.remove("is-shown");
     shown = false;
   });
 
   // Hover states, most specific first:
-  //   view  — product imagery: brackets flare wide and show the "+" zoom mark
-  //   text  — inputs: brackets hide, collapse into a slim I-beam bar
-  //   hover — links/buttons: brackets contract into a tight lock
+  //   view  — product imagery: panther grows large with a soft gaze/glow
+  //   text  — inputs: panther hides, dot becomes a slim I-beam bar
+  //   hover — links/buttons: panther perks up (grows, brightens)
   const viewSelector = ".product-image, [data-cursor-view]";
   const textSelector = "input:not([type=button]):not([type=submit]), textarea, [contenteditable]";
   const hoverSelector = "a, button, [data-cursor-grow], select, label, [data-magnetic]";
@@ -108,8 +114,7 @@ function initCustomCursor() {
     const view = !!(el && el.closest && el.closest(viewSelector));
     const text = !view && !!(el && el.closest && el.closest(textSelector));
     const hover = !view && !text && !!(el && el.closest && el.closest(hoverSelector));
-    targetHalf = view ? 26 : hover ? 9 : 16;
-    [dot, root].forEach((n) => {
+    [dot, panther].forEach((n) => {
       n.classList.toggle("is-view", view);
       n.classList.toggle("is-text", text);
       n.classList.toggle("is-hovering", hover);
@@ -118,15 +123,15 @@ function initCustomCursor() {
   document.addEventListener("mouseover", (e) => setState(e.target));
   document.addEventListener("mouseout", () => setState(null));
 
-  // Click: dot contracts, brackets rack focus inward (handled in frame()).
+  // Click: dot contracts, panther pounces (handled in frame()).
   document.addEventListener("mousedown", () => {
     dot.classList.add("is-clicking");
-    root.classList.add("is-clicking");
-    if (!reduceMotion) lockAt = performance.now();
+    panther.classList.add("is-clicking");
+    if (!reduceMotion) pounceAt = performance.now();
   });
   document.addEventListener("mouseup", () => {
     dot.classList.remove("is-clicking");
-    root.classList.remove("is-clicking");
+    panther.classList.remove("is-clicking");
   });
 }
 

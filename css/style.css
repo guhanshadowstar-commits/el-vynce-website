@@ -160,18 +160,16 @@ canvas#hero-shader, canvas#pdp-three {
   cursor: none !important;
 }
 
-/* "Viewfinder" cursor — four corner brackets framing the pointer like a
-   camera focus reticle. Sharp and architectural, not soft/blurred.
-   The dot snaps to the pointer instantly (transform set every frame from JS).
-   The bracket-square's center + half-size are physics-lerped in a rAF loop;
-   each corner's own position transform is also written every frame by JS, so
-   CSS only animates opacity/border/color here (never `transform`, or it
-   would fight JS every frame). mix-blend-mode:difference makes the whole
-   cursor self-invert over the night-mode hero, dark imagery, and white
+/* "Prowling Panther" cursor — the EL VYNCE panther-head brand mark trails the
+   pointer. The dot snaps to the pointer instantly (transform set every frame
+   from JS). The panther's position/tilt/bob/pounce transform is physics-lerped
+   in a rAF loop and written every frame by JS, so CSS only animates
+   opacity/size/filter here (never `transform`, or it would fight JS).
+   mix-blend-mode:difference (the source PNG is a solid white silhouette)
+   makes it self-invert over the night-mode hero, dark imagery, and white
    type — always visible, never lost. */
 .ev-cursor-dot,
-.ev-cursor-root,
-.ev-cursor-corner {
+.ev-cursor-panther {
   position: fixed;
   top: 0;
   left: 0;
@@ -197,9 +195,9 @@ canvas#hero-shader, canvas#pdp-three {
 .ev-cursor-dot.is-clicking { opacity: 0.5; }
 .ev-cursor-dot.is-view { opacity: 0; }
 
-/* Text fields: the brackets fade out (root opacity, above) and the dot
-   itself stretches into a slim I-beam bar — inputs always keep SOME visible
-   cursor since the native one is forced off site-wide. */
+/* Text fields: the panther fades out (below) and the dot itself stretches
+   into a slim I-beam bar — inputs always keep SOME visible cursor since the
+   native one is forced off site-wide. */
 .ev-cursor-dot.is-text {
   width: 2px;
   height: 22px;
@@ -207,76 +205,54 @@ canvas#hero-shader, canvas#pdp-three {
   border-radius: 1px;
 }
 
-/* Root is just a positioning anchor (translated every frame by JS); the four
-   corners each carry their own transform (also written every frame) offsetting
-   them from this anchor by ±half in each axis. */
-.ev-cursor-root {
+/* The brand mark itself — extracted from the client's panther logo artwork
+   as a clean white silhouette PNG. Sized by aspect ratio (385:520 ≈ 0.74)
+   so it never distorts; JS only ever translates/rotates/scales this box. */
+.ev-cursor-panther {
+  width: 31px;
+  height: 42px;
+  margin: -21px 0 0 -15.5px;   /* center on the untranslated origin */
+  background: url("../images/cursor/panther-cursor.png") no-repeat center / contain;
   z-index: 9999;
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.35s ease, width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
 }
-.ev-cursor-root.is-shown { opacity: 0.85; }
-.ev-cursor-root.is-view,
-.ev-cursor-root.is-hero-hover { opacity: 1; }
-.ev-cursor-root.is-text { opacity: 0; }
+.ev-cursor-panther.is-shown { opacity: 0.82; }
 
-/* Each corner is a small L — two adjoining border sides — 9px square by
-   default, so at rest the four form a loose 32px viewfinder square (JS
-   offsets them ±16px from center). */
-.ev-cursor-corner {
-  width: 9px;
-  height: 9px;
-  border: 1.4px solid #fff;    /* difference-blended → reads black on white */
-  transition: border-width 0.25s ease, width 0.25s ease, height 0.25s ease;
-}
-.ev-cursor-corner-tl { margin: -9px 0 0 -9px; border-right: none;  border-bottom: none; }
-.ev-cursor-corner-tr { margin: -9px 0 0 0;    border-left: none;   border-bottom: none; }
-.ev-cursor-corner-bl { margin: 0 0 0 -9px;    border-right: none;  border-top: none; }
-.ev-cursor-corner-br { margin: 0 0 0 0;       border-left: none;   border-top: none; }
-
-/* Link / button hover: brackets rack in tight — a lock-on snap. */
-.ev-cursor-root.is-hovering .ev-cursor-corner {
-  border-width: 1.8px;
+/* Link / button hover: the panther perks up — grows and brightens. */
+.ev-cursor-panther.is-hovering {
+  width: 41px;
+  height: 55px;
+  margin: -27.5px 0 0 -20.5px;
+  opacity: 1;
 }
 
-/* Clickable hero figure / car: crisp, slightly heavier lock. */
-.ev-cursor-root.is-hero-hover .ev-cursor-corner {
-  border-width: 2px;
+/* Clickable hero figure / car: a slightly smaller, crisp perk. */
+.ev-cursor-panther.is-hero-hover {
+  width: 36px;
+  height: 48.5px;
+  margin: -24.25px 0 0 -18px;
+  opacity: 1;
 }
 
-/* Text fields: brackets vanish entirely (root opacity already handles this
-   via .ev-cursor-root.is-text above; native text-caret takes over). */
+/* Text fields: panther vanishes entirely; native text-caret feel takes over
+   via the dot's I-beam shape above. */
+.ev-cursor-panther.is-text { opacity: 0; }
 
-/* Product imagery: brackets flare wide (JS drives the actual offset; this
-   just thickens the stroke) and the "+" zoom mark fades in at center. */
-.ev-cursor-root.is-view .ev-cursor-corner {
-  border-width: 1.6px;
-}
-
-.ev-cursor-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  font-family: "Inter", sans-serif;
-  font-size: 15px;
-  font-weight: 300;
-  line-height: 1;
-  color: #000;                /* NOT blended: parent already inverted, so black
-                                 glyph reads correctly against the inverted bg */
-  mix-blend-mode: normal;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.4) rotate(-45deg);
-  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none;
-}
-.ev-cursor-root.is-view .ev-cursor-label {
-  opacity: 0.9;
-  transform: translate(-50%, -50%) scale(1) rotate(0deg);
+/* Product imagery: the panther grows into a full, gazing presence with a
+   soft glow — as if it's caught sight of something. */
+.ev-cursor-panther.is-view {
+  width: 62px;
+  height: 83.7px;
+  margin: -41.85px 0 0 -31px;
+  opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ev-cursor-dot,
-  .ev-cursor-root { transition: opacity 0.2s ease; }
+  .ev-cursor-panther { transition: opacity 0.2s ease; }
 }
 
 .hero-wordmark-light .letter {
@@ -351,7 +327,7 @@ header.is-night a.bg-primary.text-on-primary {
 }
 
 @media (pointer: coarse) {
-  .ev-cursor-dot, .ev-cursor-root { display: none; }
+  .ev-cursor-dot, .ev-cursor-panther { display: none; }
 }
 
 /* ── Spinning Brand Stamp — fixed, glides site-wide ── */
