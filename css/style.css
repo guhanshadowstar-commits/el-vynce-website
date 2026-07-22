@@ -160,123 +160,123 @@ canvas#hero-shader, canvas#pdp-three {
   cursor: none !important;
 }
 
-/* "Glowing orb" cursor.
+/* "Viewfinder" cursor — four corner brackets framing the pointer like a
+   camera focus reticle. Sharp and architectural, not soft/blurred.
    The dot snaps to the pointer instantly (transform set every frame from JS).
-   The glow is a blurred radial halo, physics-lerped in a rAF loop and able to
-   velocity-stretch — its position transform is owned by JS, so CSS only
-   animates size/opacity/blur here (never `transform`, or it would fight JS).
-   mix-blend-mode:difference makes the whole cursor self-invert over dark hero
-   scenes, white type, and product photography — always visible. */
+   The bracket-square's center + half-size are physics-lerped in a rAF loop;
+   each corner's own position transform is also written every frame by JS, so
+   CSS only animates opacity/border/color here (never `transform`, or it
+   would fight JS every frame). mix-blend-mode:difference makes the whole
+   cursor self-invert over the night-mode hero, dark imagery, and white
+   type — always visible, never lost. */
 .ev-cursor-dot,
-.ev-cursor-glow {
+.ev-cursor-root,
+.ev-cursor-corner {
   position: fixed;
   top: 0;
   left: 0;
   pointer-events: none;
-  border-radius: 50%;
   mix-blend-mode: difference;
-  opacity: 0;
-  transition: opacity 0.4s ease, width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              filter 0.4s ease, background 0.35s ease;
-  will-change: transform, width, height;
+  will-change: transform;
 }
 
 .ev-cursor-dot {
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;      /* center on the untranslated origin */
-  background: #fff;           /* difference-blended → reads black on white */
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;   /* center on the untranslated origin */
+  border-radius: 50%;
+  background: #fff;            /* difference-blended → reads black on white */
   z-index: 10000;
+  opacity: 0;
+  transition: opacity 0.35s ease, width 0.25s ease, height 0.25s ease,
+              border-radius 0.25s ease, margin 0.25s ease;
 }
 .ev-cursor-dot.is-shown { opacity: 1; }
-.ev-cursor-dot.is-hovering { width: 4px; height: 4px; opacity: 0.6; }
-.ev-cursor-dot.is-hero-hover { width: 8px; height: 8px; }
-.ev-cursor-dot.is-clicking { width: 3px; height: 3px; }
-.ev-cursor-dot.is-view,
-.ev-cursor-dot.is-text { opacity: 0; }
+.ev-cursor-dot.is-hovering { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+.ev-cursor-dot.is-hero-hover { width: 6px; height: 6px; margin: -3px 0 0 -3px; }
+.ev-cursor-dot.is-clicking { opacity: 0.5; }
+.ev-cursor-dot.is-view { opacity: 0; }
 
-/* The soft ambient halo. Radial gradient + blur = a diffuse orb of light. */
-.ev-cursor-glow {
-  width: 42px;
-  height: 42px;
-  margin: -21px 0 0 -21px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%,
-                              rgba(255, 255, 255, 0.35) 45%,
-                              rgba(255, 255, 255, 0) 72%);
-  filter: blur(2px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ev-cursor-glow.is-shown { opacity: 0.85; }
-
-/* Link / button hover: the orb swells and brightens. */
-.ev-cursor-glow.is-hovering {
-  width: 60px;
-  height: 60px;
-  filter: blur(3px);
-  opacity: 1;
-}
-
-/* Clickable hero figure / car: a tighter, crisper orb invites the tap. */
-.ev-cursor-glow.is-hero-hover {
-  width: 40px;
-  height: 40px;
-  filter: blur(0.5px);
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%,
-                              rgba(255, 255, 255, 0.5) 55%,
-                              rgba(255, 255, 255, 0) 75%);
-  opacity: 1;
-}
-
-/* Text fields: collapse into a slim, crisp vertical I-beam bar. */
-.ev-cursor-glow.is-text {
-  width: 3px;
-  height: 26px;
+/* Text fields: the brackets fade out (root opacity, above) and the dot
+   itself stretches into a slim I-beam bar — inputs always keep SOME visible
+   cursor since the native one is forced off site-wide. */
+.ev-cursor-dot.is-text {
+  width: 2px;
+  height: 22px;
+  margin: -11px 0 0 -1px;
   border-radius: 1px;
-  filter: blur(0);
-  background: #fff;
-  opacity: 1;
 }
 
-/* Product imagery: crisp ringed orb with the ↗ "open" glyph. */
-.ev-cursor-glow.is-view {
-  width: 66px;
-  height: 66px;
-  filter: blur(0);
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%,
-                              rgba(255, 255, 255, 0.9) 60%,
-                              rgba(255, 255, 255, 0.9) 100%);
-  opacity: 1;
+/* Root is just a positioning anchor (translated every frame by JS); the four
+   corners each carry their own transform (also written every frame) offsetting
+   them from this anchor by ±half in each axis. */
+.ev-cursor-root {
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.ev-cursor-root.is-shown { opacity: 0.85; }
+.ev-cursor-root.is-view,
+.ev-cursor-root.is-hero-hover { opacity: 1; }
+.ev-cursor-root.is-text { opacity: 0; }
+
+/* Each corner is a small L — two adjoining border sides — 9px square by
+   default, so at rest the four form a loose 32px viewfinder square (JS
+   offsets them ±16px from center). */
+.ev-cursor-corner {
+  width: 9px;
+  height: 9px;
+  border: 1.4px solid #fff;    /* difference-blended → reads black on white */
+  transition: border-width 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+.ev-cursor-corner-tl { margin: -9px 0 0 -9px; border-right: none;  border-bottom: none; }
+.ev-cursor-corner-tr { margin: -9px 0 0 0;    border-left: none;   border-bottom: none; }
+.ev-cursor-corner-bl { margin: 0 0 0 -9px;    border-right: none;  border-top: none; }
+.ev-cursor-corner-br { margin: 0 0 0 0;       border-left: none;   border-top: none; }
+
+/* Link / button hover: brackets rack in tight — a lock-on snap. */
+.ev-cursor-root.is-hovering .ev-cursor-corner {
+  border-width: 1.8px;
+}
+
+/* Clickable hero figure / car: crisp, slightly heavier lock. */
+.ev-cursor-root.is-hero-hover .ev-cursor-corner {
+  border-width: 2px;
+}
+
+/* Text fields: brackets vanish entirely (root opacity already handles this
+   via .ev-cursor-root.is-text above; native text-caret takes over). */
+
+/* Product imagery: brackets flare wide (JS drives the actual offset; this
+   just thickens the stroke) and the "+" zoom mark fades in at center. */
+.ev-cursor-root.is-view .ev-cursor-corner {
+  border-width: 1.6px;
 }
 
 .ev-cursor-label {
+  position: absolute;
+  top: 0;
+  left: 0;
   font-family: "Inter", sans-serif;
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 300;
   line-height: 1;
   color: #000;                /* NOT blended: parent already inverted, so black
-                                 glyph reads correctly on the white orb */
+                                 glyph reads correctly against the inverted bg */
   mix-blend-mode: normal;
   opacity: 0;
-  transform: scale(0.5) rotate(-12deg);
-  transition: opacity 0.25s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translate(-50%, -50%) scale(0.4) rotate(-45deg);
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
-.ev-cursor-glow.is-view .ev-cursor-label {
-  opacity: 1;
-  transform: scale(1) rotate(0deg);
-}
-
-.ev-cursor-glow.is-clicking {
-  filter: blur(1px);
+.ev-cursor-root.is-view .ev-cursor-label {
+  opacity: 0.9;
+  transform: translate(-50%, -50%) scale(1) rotate(0deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ev-cursor-dot,
-  .ev-cursor-glow { transition: opacity 0.2s ease; }
+  .ev-cursor-root { transition: opacity 0.2s ease; }
 }
 
 .hero-wordmark-light .letter {
@@ -351,7 +351,7 @@ header.is-night a.bg-primary.text-on-primary {
 }
 
 @media (pointer: coarse) {
-  .ev-cursor-dot, .ev-cursor-glow { display: none; }
+  .ev-cursor-dot, .ev-cursor-root { display: none; }
 }
 
 /* ── Spinning Brand Stamp — fixed, glides site-wide ── */

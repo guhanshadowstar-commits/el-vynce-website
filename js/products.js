@@ -9,7 +9,7 @@ const EL_VYNCE_PRODUCTS = [
   {
     id: "ev-001",
     name: "Void Architect Bandhgala",
-    drop: "Drop 01",
+    drop: "Emotional Drops",
     price: 18500,
     currency: "INR",
     colors: ["#000000", "#2b2b2b"],
@@ -25,8 +25,8 @@ const EL_VYNCE_PRODUCTS = [
   {
     id: "ev-002",
     name: "Rebel Soul",
-    drop: "Drop 01",
-    price: 7400, // PLACEHOLDER PRICE — pending client confirmation
+    drop: "Emotional Drops",
+    price: 899,
     currency: "INR",
     colors: ["#b3001b"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
@@ -43,8 +43,8 @@ const EL_VYNCE_PRODUCTS = [
   {
     id: "ev-003",
     name: "Frequency",
-    drop: "Drop 01",
-    price: 6200, // PLACEHOLDER PRICE — pending client confirmation
+    drop: "Emotional Drops",
+    price: 899,
     currency: "INR",
     colors: ["#d8c3a5"],
     sizes: ["28", "30", "32", "34", "36"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
@@ -61,8 +61,8 @@ const EL_VYNCE_PRODUCTS = [
   {
     id: "ev-003b",
     name: "Inner Noise",
-    drop: "Drop 01",
-    price: 6200, // PLACEHOLDER PRICE — pending client confirmation
+    drop: "Emotional Drops",
+    price: 899,
     currency: "INR",
     colors: ["#0e6b73"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
