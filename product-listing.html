@@ -9,10 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='white'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='32' text-anchor='middle' fill='black'%3EEL%3C/text%3E%3C/svg%3E"/>
 <link rel="stylesheet" href="css/tailwind.css?v=20260709c"/>
-<link rel="stylesheet" href="css/style.css?v=20260722a"/>
+<link rel="stylesheet" href="css/style.css?v=20260722b"/>
 <style>.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }</style>
 </head>
 <body class="bg-white text-primary font-body-md overflow-x-hidden">
+<div id="ev-page-loader" aria-hidden="true">
+  <div class="ev-page-loader-mark"></div>
+  <div class="ev-page-loader-bar"><span></span></div>
+</div>
 
 <!-- ===== Shared Nav ===== -->
 <nav class="fixed top-0 w-full z-50 glass border-b border-outline-variant/30" data-main-nav>
@@ -117,7 +121,7 @@
 <script src="js/products.js"></script>
 <script src="js/cart.js"></script>
 <script src="js/main.js"></script>
-<script src="js/interactions.js?v=20260722a"></script>
+<script src="js/interactions.js?v=20260722b"></script>
 <script>
   let evCurrentDrop = "All";
   let evCurrentSort = "default";

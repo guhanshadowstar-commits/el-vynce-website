@@ -28,6 +28,76 @@ body {
   font-family: 'Bodoni Moda', serif;
 }
 
+/* ---- Page loader: panther-mark splash shown on every page load ----
+   Lives at the very top of <body> (partials/page-loader.html, stamped onto
+   every page by build.py) so it's the first thing painted — no flash of the
+   page underneath. js/interactions.js fades it out once the page is ready
+   (with a minimum display time so fast/cached loads don't just flicker), and
+   re-shows it for a beat when navigating to another page, so a full browser
+   page-load never reads as a blank-white jolt. */
+#ev-page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: var(--white);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.5s ease, visibility 0s linear 0s;
+}
+#ev-page-loader.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0s linear 0.5s;
+}
+
+.ev-page-loader-mark {
+  width: 84px;
+  height: 113px;
+  background: url("../images/cursor/panther-loader.png") no-repeat center / contain;
+  animation: ev-loader-breathe 1.8s ease-in-out infinite;
+  transform-origin: 50% 65%; /* roughly the jaw/chest — reads as a head-forward prowl */
+}
+@media (min-width: 768px) {
+  .ev-page-loader-mark { width: 104px; height: 140px; }
+}
+
+@keyframes ev-loader-breathe {
+  0%, 100% { transform: scale(0.96) rotate(0deg); opacity: 0.88; }
+  50%      { transform: scale(1.04) rotate(2deg); opacity: 1; }
+}
+
+.ev-page-loader-bar {
+  width: 120px;
+  height: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+  position: relative;
+}
+.ev-page-loader-bar span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: var(--black);
+  animation: ev-loader-sweep 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes ev-loader-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-page-loader-mark { animation: none; }
+  .ev-page-loader-bar span { animation: none; left: 0; width: 100%; }
+  #ev-page-loader, #ev-page-loader.is-hidden { transition: opacity 0.2s ease; }
+}
+
 /* Glassmorphism per DESIGN.md: rgba(255,255,255,0.4) + blur(10px) + 1px #E5E5E5 border */
 .glass {
   background: rgba(255, 255, 255, 0.4);

@@ -9,6 +9,13 @@ files, then run `python3 build.py` to regenerate every page in place.
 
 Pages that don't contain a given block (e.g. 404.html has no nav/footer/cart
 drawer) are simply left untouched for that block.
+
+The page-loader partial is different: it doesn't already exist in any page,
+so instead of replacing a block it's INSERTED right after the opening <body>
+tag (on every page, including 404.html) — that position matters, since it
+must be the first thing painted so there's no flash of the page underneath
+before it. The insertion is idempotent: rerunning this script never
+duplicates it, it just leaves an already-inserted loader alone.
 """
 import re
 import pathlib
@@ -24,20 +31,27 @@ BLOCKS = [
 
 SKIP_FILES = {"404.html"}
 
+BODY_OPEN = re.compile(r'(<body[^>]*>\n)')
+
 
 def main():
     partials = {}
     for name, _ in BLOCKS:
         partials[name] = (PARTIALS_DIR / f"{name}.html").read_text()
+    loader_partial = (PARTIALS_DIR / "page-loader.html").read_text()
 
     changed = []
     for html_file in sorted(ROOT.glob("*.html")):
-        if html_file.name in SKIP_FILES:
-            continue
         text = html_file.read_text()
         original = text
-        for name, pattern in BLOCKS:
-            text = pattern.sub(lambda m, n=name: partials[n], text, count=1)
+
+        if html_file.name not in SKIP_FILES:
+            for name, pattern in BLOCKS:
+                text = pattern.sub(lambda m, n=name: partials[n], text, count=1)
+
+        if '<div id="ev-page-loader"' not in text:
+            text = BODY_OPEN.sub(lambda m: m.group(1) + loader_partial, text, count=1)
+
         if text != original:
             html_file.write_text(text)
             changed.append(html_file.name)

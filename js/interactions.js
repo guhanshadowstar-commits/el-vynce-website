@@ -285,6 +285,59 @@ function initScrollProgress() {
   update();
 }
 
+function initPageLoader() {
+  // #ev-page-loader is stamped onto every page (partials/page-loader.html,
+  // via build.py) as the first thing inside <body>, so it's already visible
+  // by the time this script runs — no JS needed to show it, only to hide it.
+  const loader = document.getElementById("ev-page-loader");
+  if (!loader) return;
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Minimum time the loader stays up even on an instant/cached load — without
+  // this a fast reload just flickers, which reads as a glitch rather than a
+  // deliberate brand moment.
+  const MIN_VISIBLE = reduceMotion ? 150 : 550;
+  const shownAt = performance.now();
+
+  function hide() {
+    const elapsed = performance.now() - shownAt;
+    setTimeout(() => loader.classList.add("is-hidden"), Math.max(0, MIN_VISIBLE - elapsed));
+  }
+  // The site is static HTML with no heavy async content gating first paint,
+  // so DOMContentLoaded is the right signal — waiting for `load` would tie
+  // the loader to slow extras (the hero's 3D models, webfonts) and overstay it.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", hide, { once: true });
+  } else {
+    hide();
+  }
+
+  // Re-show when navigating to another page on this site, so a full browser
+  // page-load never reads as a blank-white jolt. This can't make navigation
+  // itself faster — it just starts the fade at the moment of intent (the
+  // click) instead of only reacting once the next page has already arrived;
+  // that page's own loader (already baked into its HTML) carries it the rest
+  // of the way, so there's no gap in between.
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const link = e.target.closest && e.target.closest("a[href]");
+    if (!link || (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
+    const href = link.getAttribute("href");
+    if (!href || /^(#|mailto:|tel:|javascript:)/.test(href)) return;
+    let url;
+    try { url = new URL(href, window.location.href); } catch { return; }
+    if (url.origin !== window.location.origin) return;
+    if (url.pathname === window.location.pathname && url.hash) return; // same-page anchor jump
+
+    e.preventDefault();
+    loader.classList.remove("is-hidden");
+    setTimeout(() => { window.location.href = href; }, reduceMotion ? 0 : 180);
+  });
+}
+// Runs immediately (not deferred to DOMContentLoaded) so the click-intercept
+// listener is live as early as possible — it does its own readiness check
+// internally rather than waiting on the block below.
+initPageLoader();
+
 document.addEventListener("DOMContentLoaded", () => {
   initCustomCursor();
   initSmoothScroll();

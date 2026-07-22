@@ -3,3 +3,4 @@ stitch_el_vynce_minimalist_shopify_ui/
 .DS_Store
 node_modules/
 .claude/
+__pycache__/
