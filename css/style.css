@@ -62,6 +62,14 @@ body {
   animation: ev-loader-breathe 1.8s ease-in-out infinite;
   transform-origin: 50% 65%; /* roughly the jaw/chest — reads as a head-forward prowl */
 }
+/* `visibility:hidden`/`opacity:0` do NOT pause a running CSS animation — without
+   this, the breathe/sweep keyframes would keep ticking forever in the
+   background on every page, invisible but still costing compositor cycles
+   and battery. Explicitly pausing them is the only thing that actually stops it. */
+#ev-page-loader.is-hidden .ev-page-loader-mark,
+#ev-page-loader.is-hidden .ev-page-loader-bar span {
+  animation-play-state: paused;
+}
 @media (min-width: 768px) {
   .ev-page-loader-mark { width: 104px; height: 140px; }
 }

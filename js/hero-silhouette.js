@@ -603,6 +603,11 @@ function initHeroSilhouette() {
   const DRIFT_AMPLITUDE_X = 0.6;
   const DRIFT_AMPLITUDE_Y = 0.18;
   const DRIFT_SPEED = 0.06;
+  // Reused every frame in the render loop below instead of calling
+  // BASE_CAM_POS.clone()/BASE_CAM_TARGET.clone() each frame, which allocated
+  // two new Vector3 objects 60 times a second for no reason.
+  const camPosScratch = new THREE.Vector3();
+  const camTargetScratch = new THREE.Vector3();
 
   const camera = new THREE.PerspectiveCamera(isSmallScreen ? 72 : 45, width / height, 0.1, 120);
   camera.position.copy(BASE_CAM_POS);
@@ -635,7 +640,12 @@ function initHeroSilhouette() {
   // Phones use per-figure contact blobs instead (shadow pass + skinned crowd
   // is too heavy for mobile GPUs).
   renderer.shadowMap.enabled = !isSmallScreen;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // PCFShadowMap (hard-ish edges, single-tap-cheap) instead of PCFSoftShadowMap
+  // (multi-tap blur, notably more expensive per shadowed pixel) — with ~30+
+  // shadow-casting objects in this scene, the soft variant was a real chunk
+  // of frame time for a visual difference that reads as barely-there softness
+  // at this camera distance.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.style.cursor = "default";
   mount.appendChild(renderer.domElement);
 
@@ -648,13 +658,17 @@ function initHeroSilhouette() {
   sun.position.set(4, 8, 6);
   if (!isSmallScreen) {
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -18;
-    sun.shadow.camera.right = 18;
-    sun.shadow.camera.top = 20;
-    sun.shadow.camera.bottom = -18;
+    // 1024 instead of 2048 — a shadow map's render+sample cost scales with
+    // resolution squared, so this alone is a ~4x cut to the shadow pass.
+    // Paired with the tighter frustum below (was ±18/20/-18, far 60), texel
+    // density on the actually-visible ground area stays about the same.
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -14;
+    sun.shadow.camera.right = 14;
+    sun.shadow.camera.top = 16;
+    sun.shadow.camera.bottom = -14;
     sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 60;
+    sun.shadow.camera.far = 46;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.02;
   }
@@ -1080,10 +1094,13 @@ function initHeroSilhouette() {
 
     const wheels = [];
     const wz = spec.half - 0.33;
+    // Wheels don't cast their own shadow — they're small, low, and already
+    // sit inside the body's shadow footprint, so the extra casters (4 per
+    // car × up to 4 cars = 16 on desktop) buy no visible difference for
+    // real shadow-pass cost.
     [[-0.46, wz], [0.46, wz], [-0.46, -wz], [0.46, -wz]].forEach(([wx, z]) => {
       const w = new THREE.Mesh(wheelGeo, wheelMat);
       w.position.set(wx, 0.17, z);
-      w.castShadow = !isSmallScreen;
       visual.add(w);
       wheels.push(w);
     });
@@ -2576,8 +2593,8 @@ function initHeroSilhouette() {
       const driftX = Math.sin(t * DRIFT_SPEED) * DRIFT_AMPLITUDE_X;
       const driftY = Math.sin(t * DRIFT_SPEED * 0.7) * DRIFT_AMPLITUDE_Y;
 
-      const camPos = BASE_CAM_POS.clone().lerp(SCROLL_CAM_POS, scrollProgress);
-      const camTarget = BASE_CAM_TARGET.clone().lerp(SCROLL_CAM_TARGET, scrollProgress);
+      const camPos = camPosScratch.copy(BASE_CAM_POS).lerp(SCROLL_CAM_POS, scrollProgress);
+      const camTarget = camTargetScratch.copy(BASE_CAM_TARGET).lerp(SCROLL_CAM_TARGET, scrollProgress);
 
       const parallaxStrength = 0.5 * (1 - scrollProgress);
       camPos.x += parallaxX * parallaxStrength + driftX * (1 - scrollProgress);
