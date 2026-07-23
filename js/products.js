@@ -237,7 +237,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#f2ecd8"],
     sizes: ["S", "M", "L", "XL"],
-    images: ["images/products/knit-cream-front.jpg", "images/products/knit-cream-back.jpg"],
+    images: ["images/products/knit-cream-front.jpg"],
     description: "Cream waffle-knit long sleeve with the EL VYNCE script logo at the chest. Oversized fit, heavyweight textured cotton.",
     inStock: true,
     isNew: true
@@ -263,7 +263,7 @@ const EL_VYNCE_PRODUCTS = [
     currency: "INR",
     colors: ["#6b4536"],
     sizes: ["S", "M", "L", "XL"],
-    images: ["images/products/knit-brown-front.jpg", "images/products/knit-brown-back.jpg"],
+    images: ["images/products/knit-brown-front.jpg"],
     description: "Brown waffle-knit long sleeve with the EL VYNCE script logo at the chest. Oversized fit, heavyweight textured cotton.",
     inStock: true,
     isNew: true
