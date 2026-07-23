@@ -24,12 +24,12 @@ Every `<script>`/`<link>` for `css/style.css`, `js/interactions.js`, `js/hero-si
 
 | Drop | Products | Price |
 |---|---|---|
-| Emotional Drops (was "Drop 01") | Void Architect Bandhgala | ₹18,500 |
-| | Rebel Soul, Frequency, Inner Noise | ₹899 each |
+| Emotional Drops (was "Drop 01") | Rebel Soul, Frequency, Inner Noise | ₹899 each |
 | Warrior Drop | Style Pays Off, Just Be Resilient, Dare to Be Different, Built Different | placeholder prices, marked "pending client confirmation" — **not real** |
 | Crop Tops | I'm Just a Girl, She., Pretty Girls Don't Do Drama, Spicy | ₹399 each |
-| Drop 03 | Sculptural Wool Overcoat, Observer Leather Carry-All | ₹24,500 / ₹16,800 |
 | Knit-wear Drops | Cream, Black, Brown, Grey Waffle Knit | ₹799 each |
+
+15 products total. "Drop 03" and the 3 AI-generated-stock-photo placeholder items that lived there/in Emotional Drops (Void Architect Bandhgala, Sculptural Wool Overcoat, Observer Leather Carry-All) were removed entirely (2026-07-23) — every remaining product now has real photography.
 
 Most Warrior Drop prices/sizes are still explicitly-marked placeholders awaiting real numbers from the client — don't treat them as final.
 
