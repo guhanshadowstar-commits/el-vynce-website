@@ -7,22 +7,6 @@
 
 const EL_VYNCE_PRODUCTS = [
   {
-    id: "ev-001",
-    name: "Void Architect Bandhgala",
-    drop: "Emotional Drops",
-    price: 18500,
-    currency: "INR",
-    colors: ["#000000", "#2b2b2b"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    images: [
-      "images/products/ev-001-1.jpg",
-      "images/products/ev-001-2.jpg"
-    ],
-    description: "A made-to-order bandhgala in heavyweight wool-blend, cut with an architectural silhouette. Hand-finished button placket, structured shoulder, and a silhouette built for stillness rather than spectacle.",
-    inStock: true,
-    isNew: true
-  },
-  {
     id: "ev-002",
     name: "Rebel Soul",
     drop: "Emotional Drops",
@@ -197,37 +181,6 @@ const EL_VYNCE_PRODUCTS = [
     description: "White crop top — front print \"spicy\" in bold red lowercase lettering, the dot on the \"i\" styled as a chili pepper.",
     inStock: true,
     isNew: true
-  },
-  {
-    id: "ev-007",
-    name: "Sculptural Wool Overcoat",
-    drop: "Drop 03",
-    price: 24500,
-    currency: "INR",
-    colors: ["#3a3a3a", "#000000"],
-    sizes: ["S", "M", "L", "XL"],
-    images: [
-      "images/products/ev-007-1.jpg",
-      "images/products/ev-007-2.jpg"
-    ],
-    description: "A heavy structural overcoat with hidden button placket, sculpted to hold its shape in motion and at rest. Limited Drop 03 production run.",
-    inStock: true,
-    isNew: true
-  },
-  {
-    id: "ev-008",
-    name: "Observer Leather Carry-All",
-    drop: "Drop 03",
-    price: 16800,
-    currency: "INR",
-    colors: ["#000000"],
-    sizes: ["One Size"],
-    images: [
-      "images/products/ev-008-1.jpg"
-    ],
-    description: "Matte black leather carry-all, hand-finished in small batches. Understated proportions built for daily structure.",
-    inStock: true,
-    isNew: false
   },
   {
     id: "ev-012",
