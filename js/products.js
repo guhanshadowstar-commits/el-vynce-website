@@ -59,7 +59,7 @@ const EL_VYNCE_PRODUCTS = [
     id: "ev-004",
     name: "Style Pays Off",
     drop: "Warrior Drop",
-    price: 9800, // PLACEHOLDER PRICE — pending client confirmation
+    price: 599,
     currency: "INR",
     colors: ["#f1ead9"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
@@ -76,7 +76,7 @@ const EL_VYNCE_PRODUCTS = [
     id: "ev-005",
     name: "Just Be Resilient",
     drop: "Warrior Drop",
-    price: 14200, // PLACEHOLDER PRICE — pending client confirmation
+    price: 599,
     currency: "INR",
     colors: ["#1b2a4a"],
     sizes: ["S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
@@ -94,7 +94,7 @@ const EL_VYNCE_PRODUCTS = [
     id: "ev-006",
     name: "Dare to Be Different",
     drop: "Warrior Drop",
-    price: 4800, // PLACEHOLDER PRICE — pending client confirmation
+    price: 599,
     currency: "INR",
     colors: ["#000000"],
     sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements
@@ -112,7 +112,7 @@ const EL_VYNCE_PRODUCTS = [
     id: "ev-006b",
     name: "Built Different",
     drop: "Warrior Drop",
-    price: 4800, // PLACEHOLDER PRICE — pending client confirmation
+    price: 599,
     currency: "INR",
     colors: ["#8a9a7b"],
     sizes: ["XS", "S", "M", "L", "XL"], // PLACEHOLDER SIZE CHART — pending client's Drop-specific measurements

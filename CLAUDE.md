@@ -25,13 +25,13 @@ Every `<script>`/`<link>` for `css/style.css`, `js/interactions.js`, `js/hero-si
 | Drop | Products | Price |
 |---|---|---|
 | Emotional Drops (was "Drop 01") | Rebel Soul, Frequency, Inner Noise | ₹899 each |
-| Warrior Drop | Style Pays Off, Just Be Resilient, Dare to Be Different, Built Different | placeholder prices, marked "pending client confirmation" — **not real** |
+| Warrior Drop | Style Pays Off, Just Be Resilient, Dare to Be Different, Built Different | ₹599 each |
 | Crop Tops | I'm Just a Girl, She., Pretty Girls Don't Do Drama, Spicy | ₹399 each |
 | Knit-wear Drops | Cream, Black, Brown, Grey Waffle Knit | ₹799 each |
 
 15 products total. "Drop 03" and the 3 AI-generated-stock-photo placeholder items that lived there/in Emotional Drops (Void Architect Bandhgala, Sculptural Wool Overcoat, Observer Leather Carry-All) were removed entirely (2026-07-23) — every remaining product now has real photography.
 
-Most Warrior Drop prices/sizes are still explicitly-marked placeholders awaiting real numbers from the client — don't treat them as final.
+Warrior Drop pricing is now real (₹599, set 2026-07-23); sizes are still placeholders awaiting real measurements from the client — don't treat those as final.
 
 ## Product photos — verify before trusting a filename
 When the user pastes product photos and points to matching files in `~/Downloads`, **don't assume filename similarity means correct content.** Downloads has accumulated multiple unrelated files with confusingly similar names (e.g. `marron_front.png` vs `23.png` — one was the real waffle-knit product photo, the other was an unrelated blank mockup with the same apparent subject). Always `Read` the actual candidate file and visually compare against what the user showed before wiring it into the catalogue. This bit us once (Cream/Brown Waffle Knit shipped with the wrong images, caught only when the user screenshotted the live listing).
@@ -62,7 +62,7 @@ When asked to fix "the hero" or "the products," fix `el-vynce-website` first (it
 Not scaffolding — actual accounts/keys, which only the user can create:
 1. Razorpay account + API keys (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`)
 2. Notion integration token + a database built via `scripts/setup-notion.mjs`
-3. Real product data for Warrior Drop (prices/sizes are still placeholders)
+3. Real size chart for Warrior Drop (price is now confirmed at ₹599; sizes are still placeholders)
 4. Vercel project connected to a repo, with the above as environment variables
 
 See `.env.example` in the Next.js project for the exact variable names.
