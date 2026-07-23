@@ -228,6 +228,58 @@ const EL_VYNCE_PRODUCTS = [
     description: "Matte black leather carry-all, hand-finished in small batches. Understated proportions built for daily structure.",
     inStock: true,
     isNew: false
+  },
+  {
+    id: "ev-012",
+    name: "Cream Waffle Knit",
+    drop: "Knit-wear Drops",
+    price: 799,
+    currency: "INR",
+    colors: ["#f2ecd8"],
+    sizes: ["S", "M", "L", "XL"],
+    images: ["images/products/knit-cream-front.jpg", "images/products/knit-cream-back.jpg"],
+    description: "Cream waffle-knit long sleeve with the EL VYNCE script logo at the chest. Oversized fit, heavyweight textured cotton.",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-013",
+    name: "Black Waffle Knit",
+    drop: "Knit-wear Drops",
+    price: 799,
+    currency: "INR",
+    colors: ["#1a1a1a"],
+    sizes: ["S", "M", "L", "XL"],
+    images: ["images/products/knit-black-front.jpg"],
+    description: "Black waffle-knit long sleeve with the EL VYNCE script logo at the chest. Oversized fit, heavyweight textured cotton.",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-014",
+    name: "Brown Waffle Knit",
+    drop: "Knit-wear Drops",
+    price: 799,
+    currency: "INR",
+    colors: ["#6b4536"],
+    sizes: ["S", "M", "L", "XL"],
+    images: ["images/products/knit-brown-front.jpg", "images/products/knit-brown-back.jpg"],
+    description: "Brown waffle-knit long sleeve with the EL VYNCE script logo at the chest. Oversized fit, heavyweight textured cotton.",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-015",
+    name: "Grey Waffle Knit",
+    drop: "Knit-wear Drops",
+    price: 799,
+    currency: "INR",
+    colors: ["#8a8a8a"],
+    sizes: ["S", "M", "L", "XL"],
+    images: ["images/products/knit-grey-front.jpg"],
+    description: "Grey waffle-knit long sleeve with the EL VYNCE script logo at the chest. Oversized fit, heavyweight textured cotton.",
+    inStock: true,
+    isNew: true
   }
 ];
 
