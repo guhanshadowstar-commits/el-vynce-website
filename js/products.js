@@ -156,6 +156,48 @@ const EL_VYNCE_PRODUCTS = [
     isNew: true
   },
   {
+    id: "ev-009",
+    name: "She.",
+    drop: "Crop Tops",
+    price: 499,
+    currency: "INR",
+    colors: ["#ece1c6"],
+    sizes: ["XS", "S", "M", "L"],
+    images: ["images/products/she-front.jpg"],
+    femaleOnly: true,
+    description: "Khaki crop top — front print \"She.\" in a bold red script serif.",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-010",
+    name: "Pretty Girls Don't Do Drama",
+    drop: "Crop Tops",
+    price: 499,
+    currency: "INR",
+    colors: ["#ecd8dc"],
+    sizes: ["XS", "S", "M", "L"],
+    images: ["images/products/pretty-girls-dont-do-drama-front.jpg"],
+    femaleOnly: true,
+    description: "Soft pink crop top — front print \"Pretty Girls Don't Do Drama\" in a playful hand-drawn caps font.",
+    inStock: true,
+    isNew: true
+  },
+  {
+    id: "ev-011",
+    name: "Spicy",
+    drop: "Crop Tops",
+    price: 499,
+    currency: "INR",
+    colors: ["#ffffff"],
+    sizes: ["XS", "S", "M", "L"],
+    images: ["images/products/spicy-front.jpg"],
+    femaleOnly: true,
+    description: "White crop top — front print \"spicy\" in bold red lowercase lettering, the dot on the \"i\" styled as a chili pepper.",
+    inStock: true,
+    isNew: true
+  },
+  {
     id: "ev-007",
     name: "Sculptural Wool Overcoat",
     drop: "Drop 03",
