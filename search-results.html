@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='white'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='32' text-anchor='middle' fill='black'%3EEL%3C/text%3E%3C/svg%3E"/>
-<link rel="stylesheet" href="css/tailwind.css?v=20260724a"/>
+<link rel="stylesheet" href="css/tailwind.css?v=20260724b"/>
 <link rel="stylesheet" href="css/style.css?v=20260722c"/>
 <style>.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }</style>
 </head>
@@ -145,7 +145,7 @@
     gridEl.innerHTML = matches.map((p, i) => `
       <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}" data-reveal data-reveal-delay="${(i % 4) * 90}">
         <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
-          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px] hidden sm:block">${p.drop}</div>
+          <div class="absolute top-4 left-4 z-10 glass px-2.5 py-1 label-sm text-[9px] tracking-wide hidden sm:block">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
           ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
           ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
