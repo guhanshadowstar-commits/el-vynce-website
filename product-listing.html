@@ -70,7 +70,7 @@
 
   <!-- Product Grid -->
   <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
-    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
+    <div id="product-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
   </section>
 
   <!-- Pagination (static, since catalogue fits one page) -->
@@ -156,7 +156,7 @@
     grid.innerHTML = list.map((p, i) => `
       <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}" data-reveal data-reveal-delay="${(i % 4) * 90}">
         <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
-          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
+          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px] hidden sm:block">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
           ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
           ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}

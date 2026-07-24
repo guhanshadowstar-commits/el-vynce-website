@@ -84,7 +84,7 @@
       <a href="product-listing.html" data-magnetic class="label-sm underline underline-offset-4 hover:text-secondary transition-colors">View All Products</a>
     </div>
 
-    <div id="featured-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
+    <div id="featured-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
   </section>
 
   <!-- ===== Shop by Drop ===== -->
@@ -214,7 +214,7 @@
     return `
       <a href="product-detail.html?id=${p.id}" class="product-card group block" data-reveal data-reveal-delay="${i * 90}">
         <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
-          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
+          <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px] hidden sm:block">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
           ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" class="product-image w-full h-full object-cover"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
         </div>
@@ -252,7 +252,7 @@
             <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg tracking-tight">${d}</h2>
             <a href="product-listing.html?drop=${encodeURIComponent(d)}" data-magnetic class="label-sm underline underline-offset-4 hover:text-secondary transition-colors">View All ${d}</a>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16">
             ${items.map((p, i) => evProductCard(p, i)).join("")}
           </div>
         </section>
