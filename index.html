@@ -86,6 +86,17 @@
 
     <div id="featured-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
   </section>
+
+  <!-- ===== Shop by Drop ===== -->
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-section-gap">
+    <div class="mb-10" data-reveal>
+      <p class="label-sm text-secondary mb-3">Browse</p>
+      <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg tracking-tight">Shop by Drop</h2>
+    </div>
+    <div id="drop-nav-chips" class="flex gap-3 overflow-x-auto no-scrollbar w-full"></div>
+  </section>
+
+  <div id="drop-sections"></div>
 </main>
 
 <!-- ===== Spinning Brand Stamp — fixed, glides site-wide ===== -->
@@ -199,25 +210,60 @@
     if (submit) submit.addEventListener("click", evHeroSearchNavigate);
   });
 
-  function evRenderFeatured() {
-    const grid = document.getElementById("featured-grid");
-    if (!grid || !window.EL_VYNCE_PRODUCTS) return;
-    const featured = EL_VYNCE_PRODUCTS.slice(0, 4);
-    grid.innerHTML = featured.map((p, i) => `
+  function evProductCard(p, i) {
+    return `
       <a href="product-detail.html?id=${p.id}" class="product-card group block" data-reveal data-reveal-delay="${i * 90}">
         <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
           <div class="absolute top-4 left-4 z-10 glass px-3 py-1 label-sm text-[10px]">${p.drop}</div>
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
-          ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" class="product-image w-full h-full object-cover"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
+          ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" class="product-image w-full h-full object-cover"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
         </div>
         <div class="flex flex-col gap-1">
           <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>
           <p class="label-sm text-secondary">${evFormatPrice(p.price)}</p>
         </div>
       </a>
-    `).join("");
+    `;
   }
-  document.addEventListener("DOMContentLoaded", evRenderFeatured);
+
+  function evRenderFeatured() {
+    const grid = document.getElementById("featured-grid");
+    if (!grid || !window.EL_VYNCE_PRODUCTS) return;
+    const featured = EL_VYNCE_PRODUCTS.slice(0, 4);
+    grid.innerHTML = featured.map((p, i) => evProductCard(p, i)).join("");
+  }
+
+  function evRenderDropSections() {
+    const chipsEl = document.getElementById("drop-nav-chips");
+    const sectionsEl = document.getElementById("drop-sections");
+    if (!chipsEl || !sectionsEl || !window.EL_VYNCE_PRODUCTS) return;
+
+    const drops = [...new Set(EL_VYNCE_PRODUCTS.map((p) => p.drop))];
+
+    chipsEl.innerHTML = drops.map((d) => `
+      <a href="product-listing.html?drop=${encodeURIComponent(d)}" data-magnetic class="px-8 py-3 dot whitespace-nowrap label-sm glass text-on-surface-variant hover:bg-surface-container transition-all">${d}</a>
+    `).join("");
+
+    sectionsEl.innerHTML = drops.map((d) => {
+      const items = EL_VYNCE_PRODUCTS.filter((p) => p.drop === d);
+      return `
+        <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-section-gap">
+          <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-16" data-reveal>
+            <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg tracking-tight">${d}</h2>
+            <a href="product-listing.html?drop=${encodeURIComponent(d)}" data-magnetic class="label-sm underline underline-offset-4 hover:text-secondary transition-colors">View All ${d}</a>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16">
+            ${items.map((p, i) => evProductCard(p, i)).join("")}
+          </div>
+        </section>
+      `;
+    }).join("");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    evRenderFeatured();
+    evRenderDropSections();
+  });
 
   // Panther intro — black screen with breathing panther, once per browser session.
   (function () {
