@@ -165,7 +165,7 @@
           ${p.isNew ? '<div class="absolute top-4 right-4 z-10 glass bg-white/90 px-3 py-1 label-sm text-[10px]">New</div>' : ""}
           ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
           ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
-          ${p.inStock ? `<button class="quick-add-btn absolute bottom-4 right-4 z-10 w-10 h-10 bg-primary text-on-primary flex items-center justify-center hover:opacity-90 transition-opacity" onclick="evQuickAdd(event, '${p.id}')" aria-label="Quick add ${p.name} to cart"><span class="material-symbols-outlined text-[20px]">add</span></button>` : ""}
+          ${p.inStock ? `<button class="quick-add-btn absolute bottom-4 right-4 z-10 w-9 h-9 glass text-primary flex items-center justify-center hover:bg-white transition-colors" onclick="evQuickAdd(event, '${p.id}')" aria-label="Quick add ${p.name} to cart"><span class="material-symbols-outlined text-[18px]">add</span></button>` : ""}
         </div>
         <div class="flex flex-col gap-1">
           <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>
