@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Privacy Policy — EL VYNCE</title>
+<title>Wishlist — EL VYNCE</title>
+<meta name="description" content="Your saved EL VYNCE pieces."/>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='white'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='32' text-anchor='middle' fill='black'%3EEL%3C/text%3E%3C/svg%3E"/>
@@ -17,6 +18,7 @@
   <div class="ev-page-loader-bar"><span></span></div>
 </div>
 
+<!-- ===== Shared Nav ===== -->
 <nav class="fixed top-0 w-full z-50 glass-strong border-b border-outline-variant/30" data-main-nav>
   <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto">
     <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter">EL VYNCE</a>
@@ -48,50 +50,23 @@
   </div>
 </nav>
 
-<main class="pt-32 pb-section-gap max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop">
-  <header class="mb-16" data-reveal>
-    <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-4">Privacy Policy</h1>
-    <p class="text-secondary">Last updated: 2026-06-27</p>
-  </header>
-
-  <section class="mb-16" data-reveal>
-    <h2 class="font-headline-md text-headline-md mb-6">Information We Collect</h2>
-    <p class="text-secondary leading-relaxed">We collect only the information necessary to process your order: your name, contact number, shipping address, and payment details.</p>
+<main class="pt-32 pb-section-gap">
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-center md:text-left" data-reveal>
+    <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-2 tracking-tight">Wishlist</h1>
+    <p class="label-sm text-secondary mb-12">Saved on this device. Nothing's reserved until you order.</p>
+    <div class="w-full h-px bg-outline-variant opacity-70 mb-16"></div>
   </section>
 
-  <section class="mb-16" data-reveal>
-    <h2 class="font-headline-md text-headline-md mb-6">How We Use Your Information</h2>
-    <div class="space-y-3 text-secondary leading-relaxed">
-      <p>Your information is used to:</p>
-      <ul class="list-disc pl-6 space-y-2">
-        <li>Process orders and provide delivery updates</li>
-        <li>Confirm payment and prevent fraud</li>
-        <li>Communicate with you about your purchase</li>
-      </ul>
+  <section class="px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+    <div id="wishlist-empty" class="hidden text-center py-24">
+      <p class="label-sm text-secondary mb-6">Your wishlist is empty.</p>
+      <a href="product-listing.html" data-magnetic class="bg-primary text-on-primary px-8 py-4 label-sm inline-block hover:opacity-90 transition-opacity">Shop the Collection</a>
     </div>
-  </section>
-
-  <section class="mb-16" data-reveal>
-    <h2 class="font-headline-md text-headline-md mb-6">Data Sharing</h2>
-    <p class="text-secondary leading-relaxed">We do not sell, trade, or rent your personal data to any third party.</p>
-  </section>
-
-  <section class="mb-16" data-reveal>
-    <h2 class="font-headline-md text-headline-md mb-6">Payments</h2>
-    <p class="text-secondary leading-relaxed">Payments are processed through secure third-party gateways (such as Razorpay). Your card or UPI details are never stored on EL VYNCE servers.</p>
-  </section>
-
-  <section class="mb-16" data-reveal>
-    <h2 class="font-headline-md text-headline-md mb-6">Data Security</h2>
-    <p class="text-secondary leading-relaxed">We maintain reasonable administrative, technical, and physical safeguards designed to protect your information against loss, misuse, and unauthorized access.</p>
-  </section>
-
-  <section class="mb-16" data-reveal>
-    <h2 class="font-headline-md text-headline-md mb-6">Policy Updates</h2>
-    <p class="text-secondary leading-relaxed">This policy is revised periodically. The latest version is always posted on this page along with its revision date.</p>
+    <div id="wishlist-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-x-gutter gap-y-16"></div>
   </section>
 </main>
 
+<!-- ===== Cart Drawer (global) ===== -->
 <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] opacity-0 pointer-events-none" id="cart-overlay">
   <div class="absolute inset-0" onclick="evToggleCart()"></div>
   <aside class="absolute top-0 right-0 h-full w-full max-w-md glass-strong border-l border-outline-variant/30 flex flex-col translate-x-full" id="cart-drawer">
@@ -114,6 +89,7 @@
   </aside>
 </div>
 
+<!-- ===== Shared Footer ===== -->
 <footer class="bg-white border-t border-outline-variant/30 w-full py-section-gap">
   <div class="flex flex-col items-center text-center px-margin-desktop w-full max-w-container-max mx-auto" data-reveal>
     <span class="font-headline-md text-headline-md text-primary mb-8 block">EL VYNCE</span>
@@ -132,5 +108,46 @@
 <script src="js/wishlist.js?v=20260724a"></script>
 <script src="js/main.js"></script>
 <script src="js/interactions.js?v=20260722b"></script>
+<script>
+  function evRenderWishlist() {
+    const ids = evGetWishlist();
+    const items = EL_VYNCE_PRODUCTS.filter((p) => ids.includes(p.id));
+    const grid = document.getElementById("wishlist-grid");
+    const empty = document.getElementById("wishlist-empty");
+
+    if (!items.length) {
+      grid.classList.add("hidden");
+      empty.classList.remove("hidden");
+      return;
+    }
+    grid.classList.remove("hidden");
+    empty.classList.add("hidden");
+
+    grid.innerHTML = items.map((p, i) => `
+      <a href="product-detail.html?id=${p.id}" class="product-card group block ${!p.inStock ? "opacity-80" : ""}" data-reveal data-reveal-delay="${(i % 4) * 90}">
+        <div class="relative aspect-[3/4] overflow-hidden border border-outline-variant/40 mb-6 bg-surface-container">
+          <button class="absolute top-4 right-4 z-10 glass w-9 h-9 flex items-center justify-center hover:bg-white transition-colors" onclick="evHandleRemoveFromWishlist(event, '${p.id}')" aria-label="Remove ${p.name} from wishlist">
+            <span class="material-symbols-outlined text-primary text-[18px]">close</span>
+          </button>
+          ${!p.inStock ? '<div class="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"><div class="glass-dark text-white px-6 py-2 dot label-sm">Sold Out</div></div>' : ""}
+          ${p.images && p.images.length ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy" class="product-image w-full h-full object-cover ${!p.inStock ? "grayscale" : ""}"/>` : evRenderPlaceholderSwatch(p, { sizeClass: "product-image w-full h-full" })}
+        </div>
+        <div class="flex flex-col gap-1">
+          <h3 class="font-body-md text-body-md tracking-tight">${p.name}</h3>
+          <p class="label-sm text-secondary">${evFormatPrice(p.price)}</p>
+        </div>
+      </a>
+    `).join("");
+  }
+
+  function evHandleRemoveFromWishlist(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    evToggleWishlist(id);
+    evRenderWishlist();
+  }
+
+  document.addEventListener("DOMContentLoaded", evRenderWishlist);
+</script>
 </body>
 </html>
