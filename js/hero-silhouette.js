@@ -39,10 +39,10 @@ const SHIRT_PRODUCTS = [
 const SMALL_SCREEN_WIDTH = 768; // below this, trim figure/building counts for perf.
 const isSmallScreen = window.innerWidth < SMALL_SCREEN_WIDTH;
 // Commuter walkers (the rush-hour stream). The dancer is added on top of
-// these. 2-3 walkers + the dancer = 3-4 figures total on screen, scaled
+// these. 3-4 walkers + the dancer = 4-5 figures total on screen, scaled
 // down on mobile for both a lighter crowd and lighter GPU load.
-const WALKER_COUNT = isSmallScreen ? 2 : 3;
-const FIGURE_COUNT = isSmallScreen ? 3 : 4; // stylized fallback crowd size
+const WALKER_COUNT = isSmallScreen ? 3 : 4;
+const FIGURE_COUNT = isSmallScreen ? 4 : 5; // stylized fallback crowd size
 // Horizontal reach of the sun/moon arc: the narrow portrait frustum can only
 // see ~±8 world units at the sky plane, so the arc is tightened on phones.
 const CELESTIAL_X = isSmallScreen ? 6 : 15;
